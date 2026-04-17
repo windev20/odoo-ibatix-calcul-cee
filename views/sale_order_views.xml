@@ -20,6 +20,8 @@
 
             <!-- Colonnes Prime CEE sur les lignes -->
             <field name="price_subtotal" position="after">
+                <!-- operation_cee_id doit être déclaré pour que les invisible puissent le référencer -->
+                <field name="operation_cee_id" column_invisible="1"/>
                 <field name="prime_cee" string="Prime CEE (€)"
                        optional="show"
                        invisible="not operation_cee_id"/>
