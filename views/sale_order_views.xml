@@ -18,24 +18,24 @@
                 </group>
             </page>
 
-            <!-- Colonnes Prime CEE sur les lignes -->
-            <field name="price_subtotal" position="after">
+            <!-- Colonnes Prime CEE sur les lignes (dans la <list> du sol_o2m) -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal'][1]" position="after">
                 <!-- operation_cee_id doit être déclaré pour que les invisible puissent le référencer -->
                 <field name="operation_cee_id" column_invisible="1"/>
                 <field name="prime_cee" string="Prime CEE (€)"
                        optional="show"
                        invisible="not operation_cee_id"/>
-            </field>
+            </xpath>
 
-            <!-- Bouton Calculer prime CEE sur chaque ligne -->
-            <field name="product_uom_qty" position="before">
+            <!-- Bouton Calculer prime CEE sur chaque ligne (dans la <list> du sol_o2m) -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="before">
                 <button name="action_ouvrir_wizard_cee"
                         type="object"
                         icon="fa-calculator"
                         title="Calculer la prime CEE"
                         class="btn btn-sm btn-info"
                         invisible="not operation_cee_id"/>
-            </field>
+            </xpath>
 
         </field>
     </record>

@@ -64,7 +64,6 @@ class SaleOrderLine(models.Model):
             'sale_line_id': self.id,
             'cumac_cee': self.cumac_cee or cumac,
             'valo_cee': self.valo_cee or valo,
-            'params_techniques': self.params_techniques_cee or '',
         })
 
         return {
