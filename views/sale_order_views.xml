@@ -9,7 +9,7 @@
         <field name="arch" type="xml">
 
             <!-- Délégataire et contrat dans l'onglet "Autre information" -->
-            <page name="other_info" position="inside">
+            <page name="other_information" position="inside">
                 <group string="CEE" name="ibatix_cee_header">
                     <field name="delegataire_cee_id"/>
                     <field name="contrat_cee_id"
