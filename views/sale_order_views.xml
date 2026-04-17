@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Champ délégataire CEE sur le devis ── -->
+    <record id="view_sale_order_form_cee" model="ir.ui.view">
+        <field name="name">sale.order.form.ibatix.cee</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Délégataire et contrat dans l'onglet "Autre information" -->
+            <page name="other_info" position="inside">
+                <group string="CEE" name="ibatix_cee_header">
+                    <field name="delegataire_cee_id"/>
+                    <field name="contrat_cee_id"
+                           domain="[('delegataire_id', '=', delegataire_cee_id)]"
+                           invisible="not delegataire_cee_id"/>
+                </group>
+            </page>
+
+            <!-- Colonnes Prime CEE sur les lignes -->
+            <field name="price_subtotal" position="after">
+                <field name="prime_cee" string="Prime CEE (€)"
+                       optional="show"
+                       invisible="not operation_cee_id"/>
+            </field>
+
+            <!-- Bouton Calculer prime CEE sur chaque ligne -->
+            <field name="product_uom_qty" position="before">
+                <button name="action_ouvrir_wizard_cee"
+                        type="object"
+                        icon="fa-calculator"
+                        title="Calculer la prime CEE"
+                        class="btn btn-sm btn-info"
+                        invisible="not operation_cee_id"/>
+            </field>
+
+        </field>
+    </record>
+
+</odoo>
