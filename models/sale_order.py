@@ -89,11 +89,15 @@ class SaleOrder(models.Model):
             # HTML : une ligne par opération
             rows = []
             for code, amount in grouped.items():
-                label = f"Prime {code} {delegataire_name}".strip() if code else f"Prime CEE {delegataire_name}".strip()
+                label = (
+                    f"Prime CEE {code} {delegataire_name}".strip()
+                    if code else f"Prime CEE {delegataire_name}".strip()
+                )
                 rows.append(
-                    f'<div class="d-flex justify-content-between fw-bold text-success border-top pt-1 mt-1">'
-                    f'<span>{label}</span>'
-                    f'<span>{_fmt_euro(amount)}</span>'
+                    f'<div class="d-flex justify-content-between fw-bold text-success border-top pt-1 mt-1" '
+                    f'style="width:100%;gap:1rem;">'
+                    f'<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{label}</span>'
+                    f'<span style="white-space:nowrap;text-align:right;">{_fmt_euro(amount)}</span>'
                     f'</div>'
                 )
             order.prime_cee_details_html = ''.join(rows)
