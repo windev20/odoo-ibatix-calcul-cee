@@ -5,34 +5,29 @@
 set -e
 
 ACTION="${1:-upgrade}"
-SERVER="82.165.222.171"
-ADDON_PATH="/opt/odoo19/addons/ibatix_calcul_cee"
-ODOO_URL="https://ibatix.neosoft.cloud"
-ODOO_DB="ibatix"
-ODOO_USER="jj.beol@gmail.com"
-ODOO_PASS="Odeli@@;-)2009"
+MODULE="ibatix_calcul_cee"
+
+source "$(dirname "$0")/../server.conf"
+ADDON_PATH="${ADDONS_PATH}/${MODULE}"
 
 echo "=== 1/3  Push vers GitHub ==="
-git push
+git push -u origin main
 
 echo "=== 2/3  Pull sur le serveur ==="
-ssh root@${SERVER} "
+ssh "${SSH_TARGET}" "
   git config --global --add safe.directory ${ADDON_PATH} &&
-  cd ${ADDON_PATH} && git pull &&
-  docker exec -u root odoo19_app bash -c '
-    find /opt/odoo/addons/ibatix_calcul_cee -name \"*.pyc\" -delete 2>/dev/null
-    rm -rf /opt/odoo/addons/ibatix_calcul_cee/__pycache__
-    chown -R odoo:odoo /opt/odoo/addons/ibatix_calcul_cee
+  cd ${ADDON_PATH} && git pull origin main &&
+  docker exec -u root ${DOCKER_CONTAINER} bash -c '
+    find /opt/odoo/addons/${MODULE} -name \"*.pyc\" -delete 2>/dev/null
+    rm -rf /opt/odoo/addons/${MODULE}/__pycache__
+    chown -R odoo:odoo /opt/odoo/addons/${MODULE}
   ' &&
-  docker restart odoo19_app
+  docker restart ${DOCKER_CONTAINER}
 "
-
-echo "Attente redémarrage Odoo (35s)..."
-sleep 35
 
 echo "=== 3/3  ${ACTION} du module ==="
 python3 - <<PYEOF
-import xmlrpc.client, ssl, sys
+import xmlrpc.client, ssl, sys, time
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
@@ -44,14 +39,19 @@ user = "${ODOO_USER}"
 pwd  = "${ODOO_PASS}"
 
 common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", context=ctx)
-uid = common.authenticate(db, user, pwd, {})
-if not uid:
-    print("Erreur : authentification Odoo échouée")
-    sys.exit(1)
+for i in range(12):
+    try:
+        uid = common.authenticate(db, user, pwd, {})
+        if uid: break
+    except Exception:
+        pass
+    time.sleep(5)
+else:
+    print("Timeout : Odoo ne répond pas"); sys.exit(1)
 
 models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object", context=ctx)
 mod_ids = models.execute_kw(db, uid, pwd,
-    'ir.module.module', 'search', [[['name', '=', 'ibatix_calcul_cee']]])
+    'ir.module.module', 'search', [[['name', '=', '${MODULE}']]])
 
 if "${ACTION}" == "install":
     models.execute_kw(db, uid, pwd,
