@@ -20,7 +20,7 @@
                     <field name="categorie_precarite" readonly="1"/>
                 </group>
 
-                <!-- Formule utilisée (visible si analysée) -->
+                <!-- Formule utilisée -->
                 <div class="alert alert-info mb-0 py-1"
                      invisible="not formule_cumac_python">
                     <small>
@@ -31,10 +31,9 @@
 
                 <notebook>
 
-                    <!-- Onglet 1 : Guide technique (depuis la fiche PDF) -->
+                    <!-- Onglet 1 : Guide technique -->
                     <page string="Guide technique" name="guide">
-                        <div class="alert alert-warning mb-3"
-                             invisible="fiche_analysee">
+                        <div class="alert alert-warning mb-3" invisible="fiche_analysee">
                             <p class="mb-2">
                                 <strong>Analysez la fiche de l'opération</strong> pour obtenir
                                 les informations techniques à collecter et activer le calcul automatique du cumac.
@@ -58,9 +57,10 @@
                             <field name="modele"/>
                         </group>
                         <group string="Caractéristiques" col="2">
-                            <!-- Chaque champ se masque si champs_requis est défini et ne le contient pas -->
                             <field name="surface_m2"
                                    invisible="champs_requis and 'surface_m2' not in (champs_requis or '')"/>
+                            <field name="surface_chauffee"
+                                   invisible="champs_requis and 'surface_chauffee' not in (champs_requis or '')"/>
                             <field name="resistance_thermique"
                                    invisible="champs_requis and 'resistance_thermique' not in (champs_requis or '')"/>
                             <field name="puissance_kw"
@@ -73,6 +73,10 @@
                                    invisible="champs_requis and 'etas' not in (champs_requis or '')"/>
                             <field name="nb_logements"
                                    invisible="champs_requis and 'nb_logements' not in (champs_requis or '')"/>
+                            <field name="type_logement"
+                                   invisible="champs_requis and 'type_logement' not in (champs_requis or '')"/>
+                            <field name="zone_climatique"
+                                   invisible="champs_requis and 'zone_climatique' not in (champs_requis or '') and 'facteur_zone' not in (champs_requis or '')"/>
                             <field name="type_energie"/>
                         </group>
                         <group string="Notes" col="1">
@@ -80,7 +84,7 @@
                         </group>
                     </page>
 
-                    <!-- Onglet 3 : Calcul de la prime -->
+                    <!-- Onglet 3 : Calcul -->
                     <page string="Calcul de la prime" name="calcul">
                         <group string="Valorisation" col="2">
                             <field name="cumac_cee"/>
