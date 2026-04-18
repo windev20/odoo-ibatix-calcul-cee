@@ -77,6 +77,10 @@
                                    invisible="champs_requis and 'type_logement' not in (champs_requis or '')"/>
                             <field name="zone_climatique"
                                    invisible="champs_requis and 'zone_climatique' not in (champs_requis or '') and 'facteur_zone' not in (champs_requis or '')"/>
+                            <field name="profil_soutirage"
+                                   invisible="champs_requis and 'profil_soutirage' not in (champs_requis or '')"/>
+                            <field name="efficacite_energetique"
+                                   invisible="champs_requis and 'efficacite_energetique' not in (champs_requis or '')"/>
                             <field name="type_energie"/>
                         </group>
                         <group string="Notes" col="1">

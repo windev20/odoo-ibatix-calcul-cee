@@ -67,6 +67,10 @@ class SaleOrderLine(models.Model):
         ('h2', 'Zone H2 (Centre / Ouest)'),
         ('h3', 'Zone H3 (Méditerranée)'),
     ], string='Zone climatique')
+    profil_soutirage_cee = fields.Selection([
+        ('M', 'M'), ('L', 'L'), ('XL', 'XL'),
+    ], string='Profil de soutirage')
+    efficacite_energetique_cee = fields.Float(string='Efficacité énergétique (%)', digits=(10, 1))
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
 
     def action_ouvrir_wizard_cee(self):
@@ -123,6 +127,8 @@ class SaleOrderLine(models.Model):
                 surface_chauffee=self.surface_chauffee_cee,
                 type_logement=self.type_logement_cee or '',
                 zone_climatique=zone or '',
+                profil_soutirage=self.profil_soutirage_cee or '',
+                efficacite_energetique=self.efficacite_energetique_cee,
             )
 
         # ── Guide technique déjà analysé ? ──────────────────────────────────
@@ -147,6 +153,8 @@ class SaleOrderLine(models.Model):
             'type_energie': self.type_energie_cee or False,
             'type_logement': self.type_logement_cee or False,
             'zone_climatique': zone or False,
+            'profil_soutirage': self.profil_soutirage_cee or False,
+            'efficacite_energetique': self.efficacite_energetique_cee,
             'notes_techniques': self.notes_techniques_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,
