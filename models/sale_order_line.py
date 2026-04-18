@@ -60,10 +60,18 @@ class SaleOrderLine(models.Model):
             else:
                 valo = contrat.valo_classique_client
 
+        # Pré-calculer le cumac si la formule est déjà connue sur l'opération
+        formule = self.operation_cee_id.formule_cumac_python if self.operation_cee_id else ''
+        cumac_auto = 0.0
+        if formule and not self.cumac_cee and not cumac:
+            from .wizard_cee import _evaluer_cumac
+            cumac_auto = _evaluer_cumac(formule, self.product_uom_qty, 0, 0, 0, 0, 0, 0)
+
         wizard = self.env['ibatix.wizard.cee'].create({
             'sale_line_id': self.id,
-            'cumac_cee': self.cumac_cee or cumac,
+            'cumac_cee': self.cumac_cee or cumac or cumac_auto,
             'valo_cee': self.valo_cee or valo,
+            'surface_m2': self.product_uom_qty,  # surface = quantité de la ligne
         })
 
         return {

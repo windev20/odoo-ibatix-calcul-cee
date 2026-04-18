@@ -8,6 +8,8 @@
             <form string="Calcul de la prime CEE">
                 <field name="sale_line_id" invisible="1"/>
                 <field name="fiche_analysee" invisible="1"/>
+                <field name="champs_requis" invisible="1"/>
+                <field name="formule_cumac_python" invisible="1"/>
 
                 <!-- Bandeau de contexte -->
                 <group string="Contexte du devis" col="4">
@@ -18,6 +20,15 @@
                     <field name="categorie_precarite" readonly="1"/>
                 </group>
 
+                <!-- Formule utilisée (visible si analysée) -->
+                <div class="alert alert-info mb-0 py-1"
+                     invisible="not formule_cumac_python">
+                    <small>
+                        <strong>Formule :</strong>
+                        <field name="formule_description" nolabel="1" readonly="1" class="d-inline"/>
+                    </small>
+                </div>
+
                 <notebook>
 
                     <!-- Onglet 1 : Guide technique (depuis la fiche PDF) -->
@@ -26,7 +37,7 @@
                              invisible="fiche_analysee">
                             <p class="mb-2">
                                 <strong>Analysez la fiche de l'opération</strong> pour obtenir
-                                les informations techniques à collecter.
+                                les informations techniques à collecter et activer le calcul automatique du cumac.
                             </p>
                             <button name="action_analyser_fiche"
                                     type="object"
@@ -47,13 +58,21 @@
                             <field name="modele"/>
                         </group>
                         <group string="Caractéristiques" col="2">
-                            <field name="surface_m2"/>
-                            <field name="puissance_kw"/>
-                            <field name="cop"/>
-                            <field name="scop"/>
-                            <field name="etas"/>
-                            <field name="resistance_thermique"/>
-                            <field name="nb_logements"/>
+                            <!-- Chaque champ se masque si champs_requis est défini et ne le contient pas -->
+                            <field name="surface_m2"
+                                   invisible="champs_requis and 'surface_m2' not in (champs_requis or '')"/>
+                            <field name="resistance_thermique"
+                                   invisible="champs_requis and 'resistance_thermique' not in (champs_requis or '')"/>
+                            <field name="puissance_kw"
+                                   invisible="champs_requis and 'puissance_kw' not in (champs_requis or '')"/>
+                            <field name="cop"
+                                   invisible="champs_requis and 'cop' not in (champs_requis or '')"/>
+                            <field name="scop"
+                                   invisible="champs_requis and 'scop' not in (champs_requis or '')"/>
+                            <field name="etas"
+                                   invisible="champs_requis and 'etas' not in (champs_requis or '')"/>
+                            <field name="nb_logements"
+                                   invisible="champs_requis and 'nb_logements' not in (champs_requis or '')"/>
                             <field name="type_energie"/>
                         </group>
                         <group string="Notes" col="1">
