@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_operation_cee_form_calcul" model="ir.ui.view">
+        <field name="name">ibatix.operation.cee.form.calcul</field>
+        <field name="model">ibatix.operation.cee</field>
+        <field name="inherit_id" ref="objets_ibatix.view_operation_cee_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Barre de statut + boutons d'action IA -->
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="action_reanalyser_fiche"
+                            type="object"
+                            string="Réanalyser avec l'IA"
+                            class="btn btn-primary"
+                            invisible="not fiche_pdf"/>
+                    <button name="action_reinitialiser_analyse"
+                            type="object"
+                            string="Réinitialiser l'analyse"
+                            class="btn btn-warning"
+                            invisible="not formule_analysee"/>
+                    <field name="formule_analysee" widget="statusbar"
+                           statusbar_visible="True"
+                           options="{'clickable': 0}"/>
+                </header>
+            </xpath>
+
+            <!-- Alerte si PDF présent mais non analysé -->
+            <xpath expr="//sheet/group" position="before">
+                <div class="alert alert-warning mb-3"
+                     invisible="formule_analysee or not fiche_pdf">
+                    <strong>Ce PDF n'a pas encore été analysé.</strong>
+                    Cliquez sur <em>« Réanalyser avec l'IA »</em> pour générer
+                    automatiquement la formule de calcul et le guide technique.
+                </div>
+                <div class="alert alert-success mb-3"
+                     invisible="not formule_analysee">
+                    <strong>Analyse IA à jour.</strong>
+                    Champs requis :
+                    <field name="champs_requis" readonly="1" nolabel="1" class="d-inline fw-bold"/>
+                    — <field name="formule_description" readonly="1" nolabel="1" class="d-inline text-muted"/>
+                </div>
+            </xpath>
+
+            <!-- Onglet Guide + Formule -->
+            <xpath expr="//sheet/group" position="after">
+                <notebook invisible="not formule_analysee">
+                    <page string="Guide technique" name="guide_ia">
+                        <field name="guide_html" widget="html" readonly="1" nolabel="1"/>
+                    </page>
+                    <page string="Formule Cumac" name="formule_ia">
+                        <group>
+                            <field name="champs_requis"/>
+                            <field name="formule_description"/>
+                        </group>
+                        <field name="formule_cumac_python" widget="text" readonly="1" nolabel="1"/>
+                    </page>
+                </notebook>
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

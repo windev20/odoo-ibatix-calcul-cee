@@ -6,11 +6,13 @@
     'author': 'ibatix',
     'depends': [
         'sale',
+        'objets_ibatix',
         'ibatix_champs',
         'ibatix_intelligence',
     ],
     'data': [
         'security/ir.model.access.csv',
+        'views/operation_cee_views.xml',
         'views/sale_order_views.xml',
         'views/wizard_cee_views.xml',
     ],
