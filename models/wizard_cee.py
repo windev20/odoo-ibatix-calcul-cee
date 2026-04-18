@@ -85,7 +85,7 @@ def _appel_claude_analyse_complete(pdf_bytes, api_key, operation_code, operation
     )
 
     payload = {
-        "model": "claude-haiku-4-5-20251001",
+        "model": "claude-sonnet-4-6",
         "max_tokens": 2048,
         "messages": [{
             "role": "user",
