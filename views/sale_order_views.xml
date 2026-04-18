@@ -34,16 +34,15 @@
             </xpath>
 
             <!-- Prime CEE dans le pavé des totaux, sous le total -->
-            <xpath expr="//field[@name='amount_total']" position="after">
+            <xpath expr="//group[@name='sale_total']/field[@name='tax_totals']" position="after">
                 <div invisible="total_prime_cee == 0"
-                     class="d-flex justify-content-between fw-bold border-top pt-1 mt-1">
-                    <field name="prime_cee_label" readonly="1" nolabel="1"
-                           class="text-success"/>
+                     class="d-flex justify-content-between fw-bold border-top pt-1 mt-1 text-success">
+                    <field name="prime_cee_label" readonly="1" nolabel="1"/>
                     <field name="total_prime_cee"
                            widget="monetary"
                            options="{'currency_field': 'currency_id'}"
                            readonly="1" nolabel="1"
-                           class="text-success text-end"/>
+                           class="text-end"/>
                 </div>
             </xpath>
 
