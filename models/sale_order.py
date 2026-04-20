@@ -14,10 +14,10 @@ def _fmt_euro(amount):
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    # Valeurs en attente pour BAR-TH-171 (ligne pas encore sauvegardée)
-    barth171_surface_pending = fields.Float(store=False, default=0.0)
-    barth171_type_pending = fields.Char(store=False, default='')
-    barth171_product_pending = fields.Integer(store=False, default=0)
+    # Valeurs en attente pour BAR-TH-171 (ligne pas encore sauvegardée en base)
+    barth171_surface_pending = fields.Float(default=0.0)
+    barth171_type_pending = fields.Char(default='')
+    barth171_product_pending = fields.Integer(default=0)
 
     delegataire_cee_id = fields.Many2one(
         'ibatix.delegataire.cee',
