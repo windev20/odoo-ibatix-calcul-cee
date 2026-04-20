@@ -4,19 +4,22 @@ import { Record } from "@web/model/relational_model/record";
 
 patch(Record.prototype, {
     async _update(changes, options = {}) {
+        // Capture BEFORE super mutates the changes object (Many2one fields can be deleted)
+        const isSOLine = this.resModel === "sale.order.line";
+        const hasProductChange = isSOLine && "product_id" in changes;
+
         await super._update(changes, options);
 
-        if (this.resModel !== "sale.order.line") return;
-        if (!("product_id" in changes)) return;
+        if (!hasProductChange) return;
 
         const wizardId = this.data.barth171_wizard_id;
         if (!wizardId) return;
 
         // Effacer pour ne pas re-déclencher
-        this._values.barth171_wizard_id = "";
-        Object.assign(this.data, this._values, this._changes || {});
+        this.data.barth171_wizard_id = "";
+        if (this._changes) this._changes.barth171_wizard_id = "";
+        if (this._values) this._values.barth171_wizard_id = "";
 
-        // Action service disponible sur le modèle racine
         const actionService = this.model?.action;
         if (!actionService) return;
 
