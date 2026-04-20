@@ -20,9 +20,11 @@
                             string="Réinitialiser l'analyse"
                             class="btn btn-warning"
                             invisible="not formule_analysee"/>
-                    <field name="formule_analysee" widget="statusbar"
-                           statusbar_visible="True"
-                           options="{'clickable': 0}"/>
+                    <field name="formule_analysee" invisible="1"/>
+                    <span class="badge rounded-pill text-bg-success ms-2"
+                          invisible="not formule_analysee">✓ Fiche analysée</span>
+                    <span class="badge rounded-pill text-bg-secondary ms-2"
+                          invisible="formule_analysee">En attente d'analyse</span>
                 </header>
             </xpath>
 

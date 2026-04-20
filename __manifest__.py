@@ -13,6 +13,7 @@
     'assets': {
         'web.assets_backend': [
             'ibatix_calcul_cee/static/src/js/cee_autosave.js',
+            'ibatix_calcul_cee/static/src/js/barth171_popup.js',
         ],
     },
     'data': [
@@ -21,6 +22,7 @@
         'views/sale_order_views.xml',
         'views/wizard_cee_views.xml',
         'views/wizard_cee_manquants_views.xml',
+        'views/wizard_barth171_views.xml',
     ],
     'installable': True,
     'application': False,

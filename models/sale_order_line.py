@@ -28,6 +28,9 @@ def _zone_from_zip(zip_code):
 class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
+    # Champ non-stocké : ID du wizard BAR-TH-171 à ouvrir (consommé côté JS)
+    barth171_wizard_id = fields.Char(store=False, default='')
+
     # ── Lien opération CEE ───────────────────────────────────────────────────
     operation_cee_id = fields.Many2one(
         'ibatix.operation.cee',
@@ -271,3 +274,43 @@ class SaleOrderLine(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
+
+
+    @api.onchange('product_id')
+    def _onchange_product_barth171_popup(self):
+        self.barth171_wizard_id = ''
+        if not self.product_id:
+            return
+        op = self.product_id.product_tmpl_id.operation_cee_id
+        if not op or op.code != 'BAR-TH-171':
+            return
+        if self.surface_chauffee_cee and self.type_logement_cee:
+            return
+        order_id = self.order_id._origin.id or self.order_id.id
+        if not order_id:
+            return
+        wizard = self.env['ibatix.wizard.barth171'].create({
+            'order_id': order_id,
+            'product_id': self.product_id.id,
+        })
+        self.barth171_wizard_id = str(wizard.id)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            order = rec.order_id
+            if (rec.operation_cee_id and rec.operation_cee_id.code == 'BAR-TH-171'
+                    and not rec.surface_chauffee_cee
+                    and order.barth171_product_pending == rec.product_id.id
+                    and order.barth171_surface_pending):
+                rec.write({
+                    'surface_chauffee_cee': order.barth171_surface_pending,
+                    'type_logement_cee': order.barth171_type_pending or False,
+                })
+                order.write({
+                    'barth171_surface_pending': 0.0,
+                    'barth171_type_pending': '',
+                    'barth171_product_pending': 0,
+                })
+        return records

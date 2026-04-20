@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wizard_barth171_form" model="ir.ui.view">
+        <field name="name">ibatix.wizard.barth171.form</field>
+        <field name="model">ibatix.wizard.barth171</field>
+        <field name="arch" type="xml">
+            <form string="Paramètres BAR-TH-171">
+                <field name="order_id" invisible="1"/>
+                <field name="product_id" invisible="1"/>
+                <div class="alert alert-info mb-3">
+                    <strong>Régulation de système de chauffage (BAR-TH-171)</strong><br/>
+                    Veuillez renseigner les paramètres nécessaires au calcul de la prime CEE.
+                </div>
+                <group>
+                    <field name="surface_chauffee" autofocus="1"/>
+                    <field name="type_logement"/>
+                </group>
+                <footer>
+                    <button name="action_confirm"
+                            string="Valider"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Annuler" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
