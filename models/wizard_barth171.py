@@ -1,4 +1,5 @@
-from odoo import fields, models
+from odoo import fields, models, _
+from odoo.exceptions import UserError
 
 
 class WizardBarTh171(models.TransientModel):
@@ -11,15 +12,18 @@ class WizardBarTh171(models.TransientModel):
     surface_chauffee = fields.Float(
         string='Surface chauffée par le système (m²)',
         digits=(10, 2),
-        required=True,
     )
     type_logement = fields.Selection([
         ('maison', 'Maison individuelle'),
         ('appartement', 'Appartement'),
-    ], string='Type de logement', required=True)
+    ], string='Type de logement')
 
     def action_confirm(self):
         self.ensure_one()
+        if not self.surface_chauffee:
+            raise UserError(_("Veuillez renseigner la surface chauffée."))
+        if not self.type_logement:
+            raise UserError(_("Veuillez renseigner le type de logement."))
         order = self.order_id
 
         # Chercher une ligne BAR-TH-171 avec ce produit sans surface_chauffee
