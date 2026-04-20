@@ -12,6 +12,8 @@ patch(Record.prototype, {
 
         if (!hasProductChange) return;
 
+        console.log("[BARTH171] post-update data:", this.data.barth171_wizard_id, "full data keys:", Object.keys(this.data));
+
         const wizardId = this.data.barth171_wizard_id;
         if (!wizardId) return;
 
@@ -21,6 +23,7 @@ patch(Record.prototype, {
         if (this._values) this._values.barth171_wizard_id = "";
 
         const actionService = this.model?.action;
+        console.log("[BARTH171] wizardId:", wizardId, "actionService:", actionService);
         if (!actionService) return;
 
         await actionService.doAction({
