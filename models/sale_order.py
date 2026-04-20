@@ -18,6 +18,7 @@ class SaleOrder(models.Model):
         'ibatix.delegataire.cee',
         string='Délégataire CEE',
         tracking=True,
+        default=lambda self: self.env['ibatix.delegataire.cee'].search([('is_default', '=', True)], limit=1),
     )
     contrat_cee_id = fields.Many2one(
         'ibatix.delegataire.contrat',
