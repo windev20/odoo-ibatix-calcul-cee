@@ -21,6 +21,7 @@
             <!-- operation_cee_id déclaré pour que les invisible puissent le référencer -->
             <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal'][1]" position="after">
                 <field name="operation_cee_id" column_invisible="1"/>
+                <field name="barth171_wizard_id" column_invisible="1"/>
             </xpath>
 
             <!-- Bouton Calculer prime CEE sur chaque ligne (dans la <list> du sol_o2m) -->
