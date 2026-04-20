@@ -20,6 +20,7 @@
         'views/operation_cee_views.xml',
         'views/sale_order_views.xml',
         'views/wizard_cee_views.xml',
+        'views/wizard_cee_manquants_views.xml',
     ],
     'installable': True,
     'application': False,

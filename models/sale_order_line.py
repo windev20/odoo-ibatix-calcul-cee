@@ -1,3 +1,5 @@
+import re
+
 from odoo import api, fields, models
 
 # Mapping code département → zone climatique CEE (H1 / H2 / H3)
@@ -73,6 +75,97 @@ class SaleOrderLine(models.Model):
     efficacite_energetique_cee = fields.Float(string='Efficacité énergétique (%)', digits=(10, 1))
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
 
+    def _get_next_product_line(self):
+        """Retourne la ligne produit qui suit immédiatement cette opération CEE."""
+        self.ensure_one()
+        sorted_lines = self.order_id.order_line.sorted(lambda l: (l.sequence, l.id))
+        found = False
+        for line in sorted_lines:
+            if found and line.product_id and not line.operation_cee_id:
+                return line
+            if line.id == self.id:
+                found = True
+        return None
+
+    def _extraire_donnees_produit(self, product_line):
+        """Parse le descriptif du produit et extrait les données techniques CEE."""
+        if not product_line or not product_line.product_id:
+            return {}
+
+        product = product_line.product_id
+        desc = '\n'.join(filter(None, [
+            product.name or '',
+            product.description_sale or '',
+            product.description or '',
+        ]))
+
+        result = {}
+
+        # Marque — premier mot du nom produit
+        if product.name:
+            result['marque'] = product.name.split()[0]
+
+        # Modèle — default_code en priorité, sinon référence extérieure dans desc
+        if product.default_code:
+            result['modele'] = product.default_code
+        else:
+            m = re.search(
+                r'[Rr]éférence\s*(?:unité\s*extérieure|ext\.?)?\s*[:·]\s*([A-Z0-9][A-Z0-9\-\.\/]+)',
+                desc,
+            )
+            if m:
+                result['modele'] = m.group(1)
+
+        # COP nominal
+        m = re.search(r'COP\s*(?:nominal|chauffage)?\s*[:·]\s*([\d]+[,\.][\d]+)', desc)
+        if m:
+            result['cop'] = float(m.group(1).replace(',', '.'))
+
+        # SCOP — préférer 35°C
+        m = re.search(r'SCOP\s*(?:chauffage\s*)?(?:35[°º]C\s*)?[:·]\s*([\d]+[,\.][\d]+)', desc)
+        if m:
+            result['scop'] = float(m.group(1).replace(',', '.'))
+
+        # ETAS (ηs) — préférer 35°C
+        m = re.search(r'ETAS\s+chauffage[^:]*?35[°º]C\s*[:·]\s*([\d]+)\s*%', desc)
+        if not m:
+            m = re.search(r'(?:ETAS|ηs)\s*(?:chauffage)?\s*[:·]\s*([\d]+)\s*%', desc)
+        if m:
+            result['etas'] = float(m.group(1))
+
+        # Puissance kW
+        m = re.search(
+            r'[Pp]uissance\s*(?:calorifique\s*)?(?:nominale\s*)?[:·]\s*([\d]+[,\.]?[\d]*)\s*kW',
+            desc,
+        )
+        if not m:
+            m = re.search(r'([\d]+[,\.]?[\d]*)\s*kW', product.name or '')
+        if m:
+            result['puissance_kw'] = float(m.group(1).replace(',', '.'))
+
+        # Résistance thermique R
+        m = re.search(r'[Rr]ésistance\s*thermique\s*R[^:]*[:·]\s*([\d]+[,\.]?[\d]*)', desc)
+        if m:
+            result['resistance_thermique'] = float(m.group(1).replace(',', '.'))
+
+        # Surface m²
+        m = re.search(r'[Ss]urface\s*\(m[²2]\)\s*[:·]\s*([\d]+[,\.]?[\d]*)', desc)
+        if m:
+            result['surface_m2'] = float(m.group(1).replace(',', '.'))
+
+        # Type logement
+        if re.search(r'[Mm]aison\s*individuelle', desc):
+            result['type_logement'] = 'maison'
+        elif re.search(r'[Aa]ppartement', desc):
+            result['type_logement'] = 'appartement'
+
+        # Efficacité énergétique ErP (η%) — pour chaudières/PAC hybrides
+        m = re.search(r'[Ee]fficacité\s*[Ee]nergétique\s*[:·]\s*([\d]+[,\.]?[\d]*)\s*%', desc)
+        if m:
+            result['efficacite_energetique'] = float(m.group(1).replace(',', '.'))
+
+        return result
+
     def action_ouvrir_wizard_cee(self):
         """Ouvre le wizard de calcul de prime CEE pour cette ligne."""
         self.ensure_one()
@@ -135,11 +228,11 @@ class SaleOrderLine(models.Model):
         guide_html = (op.guide_html or '') if op else ''
         fiche_deja_analysee = bool(guide_html or (op and op.formule_analysee))
 
-        wizard = self.env['ibatix.wizard.cee'].create({
+        # ── Données de base (valeurs sauvegardées) ───────────────────────────
+        wizard_vals = {
             'sale_line_id': self.id,
             'cumac_cee': cumac_init,
             'valo_cee': valo,
-            # Paramètres techniques sauvegardés
             'marque': self.marque_cee or '',
             'modele': self.modele_cee or '',
             'surface_m2': surface,
@@ -158,7 +251,17 @@ class SaleOrderLine(models.Model):
             'notes_techniques': self.notes_techniques_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,
-        })
+        }
+
+        # ── Auto-extraction depuis le produit suivant ────────────────────────
+        next_line = self._get_next_product_line()
+        if next_line:
+            extracted = self._extraire_donnees_produit(next_line)
+            for key, val in extracted.items():
+                if val:  # Écraser uniquement avec des valeurs non nulles
+                    wizard_vals[key] = val
+
+        wizard = self.env['ibatix.wizard.cee'].create(wizard_vals)
 
         return {
             'type': 'ir.actions.act_window',

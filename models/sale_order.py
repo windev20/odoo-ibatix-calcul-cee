@@ -102,3 +102,122 @@ class SaleOrder(models.Model):
                     f'</div>'
                 )
             order.prime_cee_details_html = ''.join(rows)
+
+    # ── Validation des données CEE à la confirmation ─────────────────────────
+
+    _CEE_CHAMP_TO_LINE_FIELD = {
+        'surface_m2':            ('surface_m2_cee',           'Surface (m²)'),
+        'surface_chauffee':      ('surface_chauffee_cee',     'Surface chauffée (m²)'),
+        'resistance_thermique':  ('resistance_thermique_cee', 'Résistance thermique R'),
+        'puissance_kw':          ('puissance_kw_cee',         'Puissance (kW)'),
+        'cop':                   ('cop_cee',                  'COP'),
+        'scop':                  ('scop_cee',                 'SCOP'),
+        'etas':                  ('etas_cee',                 'Efficacité saisonnière ηs (%)'),
+        'nb_logements':          ('nb_logements_cee',         'Nombre de logements'),
+        'type_logement':         ('type_logement_cee',        'Type de logement'),
+        'zone_climatique':       ('zone_climatique_cee',      'Zone climatique'),
+        'facteur_zone':          ('zone_climatique_cee',      'Zone climatique'),
+        'facteur_logement':      ('type_logement_cee',        'Type de logement'),
+        'profil_soutirage':      ('profil_soutirage_cee',     'Profil de soutirage'),
+        'efficacite_energetique':('efficacite_energetique_cee','Efficacité énergétique (%)'),
+    }
+
+    def _check_cee_data_completeness(self):
+        """
+        Vérifie que les champs requis par chaque opération CEE sont remplis.
+        Retourne un HTML listant les problèmes, ou '' si tout est OK.
+        """
+        issues = []
+        for line in self.order_line.filtered('operation_cee_id'):
+            op = line.operation_cee_id
+            champs_requis = [
+                c.strip()
+                for c in (op.champs_requis or '').split(',')
+                if c.strip()
+            ]
+            if not champs_requis:
+                continue  # Opération non encore analysée — pas de vérification
+
+            missing = []
+
+            # Marque et modèle toujours obligatoires
+            if not line.marque_cee:
+                missing.append('Marque')
+            if not line.modele_cee:
+                missing.append('Modèle / Référence')
+
+            seen = set()
+            for champ in champs_requis:
+                mapping = self._CEE_CHAMP_TO_LINE_FIELD.get(champ)
+                if not mapping:
+                    continue
+                field_name, label = mapping
+                if field_name in seen:
+                    continue
+                seen.add(field_name)
+                if not getattr(line, field_name, None):
+                    missing.append(label)
+
+            if missing:
+                next_line = line._get_next_product_line()
+                product_label = (
+                    next_line.product_id.name or '' if next_line else ''
+                )
+                issues.append({
+                    'op_code': op.code or op.name or '',
+                    'op_name': op.name or '',
+                    'product': product_label,
+                    'missing': missing,
+                })
+
+        if not issues:
+            return ''
+
+        rows = ''.join(
+            f'<tr>'
+            f'<td><strong>{i["op_code"]}</strong>'
+            f'{"<br/><small class=text-muted>" + i["op_name"] + "</small>" if i["op_name"] != i["op_code"] else ""}'
+            f'</td>'
+            f'<td>{i["product"]}</td>'
+            f'<td><span class="text-danger">{", ".join(i["missing"])}</span></td>'
+            f'</tr>'
+            for i in issues
+        )
+
+        return (
+            '<div class="alert alert-warning mb-3">'
+            '<h5 class="alert-heading">&#9888; Données techniques CEE incomplètes</h5>'
+            '<p class="mb-0">Les champs suivants sont manquants pour calculer les primes CEE :</p>'
+            '</div>'
+            '<table class="table table-sm table-bordered">'
+            '<thead class="table-light">'
+            '<tr><th>Opération CEE</th><th>Produit associé</th><th>Champs manquants</th></tr>'
+            '</thead>'
+            f'<tbody>{rows}</tbody>'
+            '</table>'
+            '<div class="alert alert-info mt-2 mb-0">'
+            '<small>&#128161; Cliquez sur la calculatrice &#129518; de chaque ligne pour '
+            'saisir les données manquantes, ou confirmez quand même.</small>'
+            '</div>'
+        )
+
+    def button_confirm(self):
+        if self.env.context.get('skip_cee_check') or len(self) != 1:
+            return super().button_confirm()
+
+        issues_html = self._check_cee_data_completeness()
+        if not issues_html:
+            return super().button_confirm()
+
+        wizard = self.env['ibatix.wizard.cee.manquants'].create({
+            'sale_order_id': self.id,
+            'message_html': issues_html,
+        })
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Données CEE manquantes',
+            'res_model': 'ibatix.wizard.cee.manquants',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_wizard_cee_manquants_form" model="ir.ui.view">
+        <field name="name">ibatix.wizard.cee.manquants.form</field>
+        <field name="model">ibatix.wizard.cee.manquants</field>
+        <field name="arch" type="xml">
+            <form string="Données CEE manquantes">
+                <field name="sale_order_id" invisible="1"/>
+                <field name="message_html" widget="html" readonly="1" nolabel="1"/>
+                <footer>
+                    <button string="Corriger d'abord"
+                            special="cancel"
+                            class="btn btn-primary"/>
+                    <button name="action_confirmer_quand_meme"
+                            string="Confirmer quand même"
+                            type="object"
+                            class="btn btn-warning"
+                            confirm="Les primes CEE manquantes ne seront pas calculées. Continuer ?"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>
