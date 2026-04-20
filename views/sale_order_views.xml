@@ -30,6 +30,7 @@
                         icon="fa-calculator"
                         title="Calculer la prime CEE"
                         class="btn btn-sm btn-info"
+                        save="true"
                         invisible="not operation_cee_id"/>
             </xpath>
 
