@@ -10,6 +10,11 @@
         'ibatix_champs',
         'ibatix_intelligence',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'ibatix_calcul_cee/static/src/js/cee_autosave.js',
+        ],
+    },
     'data': [
         'security/ir.model.access.csv',
         'views/operation_cee_views.xml',
