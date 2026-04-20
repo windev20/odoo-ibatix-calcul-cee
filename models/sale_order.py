@@ -17,6 +17,7 @@ class SaleOrder(models.Model):
     # Valeurs en attente pour BAR-TH-171 (ligne pas encore sauvegardée en base)
     barth171_surface_pending = fields.Float(default=0.0)
     barth171_type_pending = fields.Char(default='')
+    barth171_energie_pending = fields.Char(default='')
     barth171_product_pending = fields.Integer(default=0)
 
     delegataire_cee_id = fields.Many2one(

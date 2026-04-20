@@ -17,6 +17,13 @@ class WizardBarTh171(models.TransientModel):
         ('maison', 'Maison individuelle'),
         ('appartement', 'Appartement'),
     ], string='Type de logement')
+    type_energie = fields.Selection([
+        ('electricite', 'Électricité'),
+        ('gaz', 'Gaz naturel'),
+        ('fioul', 'Fioul'),
+        ('bois', 'Bois / Biomasse'),
+        ('autre', 'Autre'),
+    ], string='Énergie de chauffage avant travaux')
 
     def action_confirm(self):
         self.ensure_one()
@@ -24,6 +31,8 @@ class WizardBarTh171(models.TransientModel):
             raise UserError(_("Veuillez renseigner la surface chauffée."))
         if not self.type_logement:
             raise UserError(_("Veuillez renseigner le type de logement."))
+        if not self.type_energie:
+            raise UserError(_("Veuillez renseigner l'énergie de chauffage avant travaux."))
         order = self.order_id
 
         # Chercher une ligne BAR-TH-171 avec ce produit sans surface_chauffee
@@ -37,12 +46,14 @@ class WizardBarTh171(models.TransientModel):
             line.write({
                 'surface_chauffee_cee': self.surface_chauffee,
                 'type_logement_cee': self.type_logement,
+                'type_energie_cee': self.type_energie,
             })
         else:
             # Ligne pas encore sauvegardée : stocker en attente sur l'order
             order.write({
                 'barth171_surface_pending': self.surface_chauffee,
                 'barth171_type_pending': self.type_logement,
+                'barth171_energie_pending': self.type_energie,
                 'barth171_product_pending': self.product_id.id,
             })
 

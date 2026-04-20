@@ -307,10 +307,12 @@ class SaleOrderLine(models.Model):
                 rec.write({
                     'surface_chauffee_cee': order.barth171_surface_pending,
                     'type_logement_cee': order.barth171_type_pending or False,
+                    'type_energie_cee': order.barth171_energie_pending or False,
                 })
                 order.write({
                     'barth171_surface_pending': 0.0,
                     'barth171_type_pending': '',
+                    'barth171_energie_pending': '',
                     'barth171_product_pending': 0,
                 })
         return records
