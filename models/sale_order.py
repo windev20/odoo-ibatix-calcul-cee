@@ -55,24 +55,28 @@ class SaleOrder(models.Model):
     )
     total_prime_mpr = fields.Float(
         string='Total Prime MPR',
-        compute='_compute_prime_mpr_totals',
+        compute='_compute_total_prime_mpr',
         store=True,
         digits=(10, 2),
     )
     prime_mpr_details_html = fields.Html(
-        compute='_compute_prime_mpr_totals',
+        compute='_compute_prime_mpr_details_html',
         store=False,
         sanitize=False,
         string='Detail primes MPR',
     )
 
+    @api.depends('order_line.prime_mpr')
+    def _compute_total_prime_mpr(self):
+        for order in self:
+            order.total_prime_mpr = sum(
+                order.order_line.filtered(lambda l: l.prime_mpr).mapped('prime_mpr')
+            )
 
-
-    @api.depends('order_line.prime_mpr', 'order_line.operation_cee_id')
-    def _compute_prime_mpr_totals(self):
+    @api.depends('order_line.prime_mpr', 'order_line.prime_mpr_ecrete', 'order_line.operation_cee_id')
+    def _compute_prime_mpr_details_html(self):
         for order in self:
             lines_with_mpr = order.order_line.filtered(lambda l: l.prime_mpr)
-            order.total_prime_mpr = sum(lines_with_mpr.mapped('prime_mpr'))
 
             if not lines_with_mpr:
                 order.prime_mpr_details_html = False
@@ -85,7 +89,7 @@ class SaleOrder(models.Model):
 
             rows = []
             for code, amount in grouped.items():
-                label = ('MaPrimeRenov\' ' + code).strip() if code else "MaPrimeRenov'"
+                label = ("MaPrimeRenov' " + code).strip() if code else "MaPrimeRenov'"
                 ecrete = any(
                     l.prime_mpr_ecrete
                     for l in lines_with_mpr
