@@ -1,4 +1,6 @@
+import json
 import re
+import urllib.request
 
 from odoo import api, fields, models
 
@@ -171,6 +173,114 @@ class SaleOrderLine(models.Model):
 
         return result
 
+    # Libellés lisibles pour les champs produit manquants
+    _LABELS_CHAMPS_PRODUIT = {
+        'marque': 'Marque',
+        'modele': 'Modèle / Référence',
+        'etas': 'Efficacité ηs (%)',
+        'puissance_kw': 'Puissance (kW)',
+        'cop': 'COP',
+        'scop': 'SCOP',
+        'type_application_pac': 'Application PAC (BT / MT-HT)',
+        'usage_pac': 'Usage PAC (chauffage / + ECS)',
+        'classe_regulateur': 'Classe du régulateur',
+    }
+
+    def _champs_produit_requis(self):
+        """Retourne la liste des champs produit attendus pour cette opération."""
+        op = self.operation_cee_id
+        champs_requis = (op.champs_requis or '') if op else ''
+        requis = ['marque', 'modele']
+        if 'etas' in champs_requis:
+            requis.append('etas')
+        if 'puissance_kw' in champs_requis:
+            requis.append('puissance_kw')
+        if 'cop' in champs_requis:
+            requis.extend(['cop', 'scop'])
+        if op and op.code == 'BAR-TH-171':
+            requis.extend(['type_application_pac', 'usage_pac', 'classe_regulateur'])
+        return requis
+
+    def _extraire_donnees_produit_ia(self, product_line, api_key):
+        """Extrait les données techniques via Claude depuis le descriptif produit.
+        Retourne (dict_valeurs, liste_champs_manquants).
+        """
+        if not product_line or not product_line.product_id:
+            return {}, self._champs_produit_requis()
+
+        product = product_line.product_id
+        desc = '\n'.join(filter(None, [
+            product.name or '',
+            product_line.name or '',
+            product.description_sale or '',
+            product.description or '',
+        ]))
+
+        if not desc.strip():
+            return {}, self._champs_produit_requis()
+
+        prompt = (
+            "Tu es un expert en pompes a chaleur et equipements CEE. "
+            "Extrait les donnees techniques du descriptif produit suivant.\n\n"
+            f"Descriptif :\n{desc}\n\n"
+            "Retourne UNIQUEMENT un JSON valide avec ces cles (null si non trouve) :\n"
+            '{\n'
+            '  "marque": "string ou null",\n'
+            '  "modele": "string ou null",\n'
+            '  "etas": entier (%) ou null,\n'
+            '  "puissance_kw": decimal ou null,\n'
+            '  "cop": decimal ou null,\n'
+            '  "scop": decimal ou null,\n'
+            '  "type_application_pac": "basse_temperature" ou "haute_temperature" ou null,\n'
+            '  "usage_pac": "chauffage" ou "chauffage_ecs" ou null,\n'
+            '  "classe_regulateur": "IV" ou "V" ou "VI" ou "VII" ou "VIII" ou null\n'
+            '}\n\n'
+            "Regles :\n"
+            "- type_application_pac : basse_temperature si 35degC / plancher chauffant / ventiloconvecteur,"
+            " haute_temperature si 55degC / radiateurs\n"
+            "- usage_pac : chauffage si chauffage seul, chauffage_ecs si chauffage + ECS / eau chaude\n"
+            "- etas : efficacite energetique saisonniere ns en %, nombre entier\n"
+            "- marque : fabricant de l'equipement\n"
+            "- modele : reference commerciale de l'equipement\n"
+            "Reponds uniquement en JSON, sans markdown."
+        )
+
+        payload = {
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 512,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api.anthropic.com/v1/messages',
+            data=data,
+            headers={
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            method='POST',
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = json.loads(resp.read().decode('utf-8'))
+            raw = body.get('content', [{}])[0].get('text', '').strip()
+            extracted = json.loads(raw)
+        except Exception:
+            # Fallback regex si l'IA échoue
+            return self._extraire_donnees_produit(product_line), []
+
+        result = {}
+        for key in ('marque', 'modele', 'etas', 'puissance_kw', 'cop', 'scop',
+                    'type_application_pac', 'usage_pac', 'classe_regulateur'):
+            val = extracted.get(key)
+            if val is not None:
+                result[key] = val
+
+        requis = self._champs_produit_requis()
+        missing = [f for f in requis if not result.get(f)]
+        return result, missing
+
     def action_ouvrir_wizard_cee(self):
         """Ouvre le wizard de calcul de prime CEE pour cette ligne."""
         self.ensure_one()
@@ -265,11 +375,31 @@ class SaleOrderLine(models.Model):
         }
 
         # ── Auto-extraction depuis le produit suivant ────────────────────────
+        champs_manquants = ''
         if next_line:
-            extracted = self._extraire_donnees_produit(next_line)
+            api_key = self.env['ir.config_parameter'].sudo().get_param(
+                'ibatix.anthropic_api_key', ''
+            )
+            if api_key:
+                extracted, missing = self._extraire_donnees_produit_ia(next_line, api_key)
+            else:
+                extracted = self._extraire_donnees_produit(next_line)
+                missing = []
+
             for key, val in extracted.items():
-                if val:
+                if val and not wizard_vals.get(key):
                     wizard_vals[key] = val
+
+            # Champs manquants = requis mais absents même après extraction ET non déjà sauvegardés
+            labels = self._LABELS_CHAMPS_PRODUIT
+            manquants_filtrés = [
+                labels.get(f, f) for f in missing if not wizard_vals.get(f)
+            ]
+            if manquants_filtrés:
+                champs_manquants = ', '.join(manquants_filtrés)
+
+        wizard_vals['champs_manquants_produit'] = champs_manquants
+        wizard_vals['product_line_id'] = next_line.id if next_line else False
 
         wizard = self.env['ibatix.wizard.cee'].create(wizard_vals)
 

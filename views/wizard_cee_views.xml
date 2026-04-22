@@ -52,6 +52,24 @@
 
                     <!-- Onglet 2 : Paramètres techniques -->
                     <page string="Informations techniques" name="params">
+                        <field name="product_line_id" invisible="1"/>
+                        <div class="alert alert-warning"
+                             invisible="not champs_manquants_produit">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="fa fa-exclamation-triangle mt-1"/>
+                                <div>
+                                    <strong>Données manquantes dans le descriptif produit :</strong><br/>
+                                    <field name="champs_manquants_produit" nolabel="1" readonly="1"/>
+                                    <br/>
+                                    <small>Complétez le descriptif du produit, puis rouvrez la calculatrice.</small>
+                                </div>
+                                <button name="action_ouvrir_produit"
+                                        type="object"
+                                        string="Ouvrir la fiche produit"
+                                        class="btn btn-sm btn-warning ms-auto"
+                                        invisible="not product_line_id"/>
+                            </div>
+                        </div>
                         <group string="Identification du produit" col="2">
                             <field name="marque"/>
                             <field name="modele"/>

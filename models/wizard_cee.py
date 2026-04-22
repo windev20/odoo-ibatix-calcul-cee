@@ -156,6 +156,8 @@ class WizardCee(models.TransientModel):
 
     # ── Contexte (lecture seule) ─────────────────────────────────────────────
     sale_line_id = fields.Many2one('sale.order.line', required=True, readonly=True)
+    product_line_id = fields.Many2one('sale.order.line', readonly=True)
+    champs_manquants_produit = fields.Char(readonly=True)
     operation_cee_id = fields.Many2one(
         'ibatix.operation.cee',
         related='sale_line_id.operation_cee_id',
@@ -522,3 +524,18 @@ class WizardCee(models.TransientModel):
         if self.notes_techniques:
             lines.append(f"Notes : {self.notes_techniques}")
         return '\n'.join(lines)
+
+    def action_ouvrir_produit(self):
+        """Ouvre la fiche du produit lié dans une nouvelle fenêtre."""
+        self.ensure_one()
+        product = self.product_line_id.product_id if self.product_line_id else None
+        if not product:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': product.display_name,
+            'res_model': 'product.product',
+            'res_id': product.id,
+            'views': [(False, 'form')],
+            'target': 'new',
+        }
