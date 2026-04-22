@@ -264,6 +264,10 @@ class WizardCee(models.TransientModel):
         string='Ecretement MPR',
         compute='_compute_prime_mpr_preview',
     )
+    prime_mpr_eligible = fields.Boolean(
+        string='Eligibilite MPR',
+        compute='_compute_prime_mpr_preview',
+    )
 
     @api.depends(
         'prime_cee', 'surface_m2', 'surface_chauffee',
@@ -276,6 +280,7 @@ class WizardCee(models.TransientModel):
             if not op or not op.eligible_mpr:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
+                rec.prime_mpr_eligible = False
                 continue
             categorie = rec.categorie_precarite
             if categorie == 'precaire':
@@ -287,7 +292,9 @@ class WizardCee(models.TransientModel):
             else:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
+                rec.prime_mpr_eligible = False
                 continue
+            rec.prime_mpr_eligible = True
             if not forfait_unitaire:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
@@ -309,6 +316,7 @@ class WizardCee(models.TransientModel):
                     ecrete = True
             rec.prime_mpr_preview = round(forfait, 2)
             rec.prime_mpr_ecrete_preview = ecrete
+            rec.prime_mpr_eligible = True
 
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',

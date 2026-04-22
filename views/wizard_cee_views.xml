@@ -109,7 +109,11 @@
                                     × <field name="valo_cee" nolabel="1" readonly="1"/> €/MWhc
                                 </small>
                             </div>
-                            <div class="alert alert-primary" invisible="not prime_mpr_preview">
+                            <field name="prime_mpr_eligible" invisible="1"/>
+                            <field name="prime_mpr_ecrete_preview" invisible="1"/>
+                            <!-- MPR eligible + prime > 0 -->
+                            <div class="alert alert-primary"
+                                 invisible="not prime_mpr_eligible or not prime_mpr_preview">
                                 <h4 class="mb-0">
                                     MaPrimeRénov’ estimée :
                                     <field name="prime_mpr_preview"
@@ -122,9 +126,18 @@
                                         Écrêté
                                     </span>
                                 </h4>
-                                <field name="prime_mpr_ecrete_preview" invisible="1"/>
                             </div>
-                            <div class="alert alert-secondary" invisible="prime_mpr_preview">
+                            <!-- MPR eligible mais prime = 0 (ecretement total) -->
+                            <div class="alert alert-warning"
+                                 invisible="not prime_mpr_eligible or prime_mpr_preview">
+                                <small>
+                                    <strong>MaPrimeRénov’ : 0 €</strong> —
+                                    Prime écrêtée à zéro : le coût de l’équipement est insuffisant
+                                    par rapport à la prime CEE cumulée.
+                                </small>
+                            </div>
+                            <!-- Non eligible -->
+                            <div class="alert alert-secondary" invisible="prime_mpr_eligible">
                                 <small class="text-muted">
                                     Pas de prime MPR : opération non éligible ou ménage supérieur.
                                 </small>
