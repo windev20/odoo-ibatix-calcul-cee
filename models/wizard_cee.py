@@ -265,15 +265,19 @@ class WizardCee(models.TransientModel):
         compute='_compute_prime_mpr_preview',
     )
 
-    @api.depends('prime_cee', 'surface_m2', 'surface_chauffee', 'sale_line_id')
+    @api.depends(
+        'prime_cee', 'surface_m2', 'surface_chauffee',
+        'sale_line_id', 'sale_line_id.operation_cee_id',
+        'sale_line_id.order_id.partner_id.categorie_precarite',
+    )
     def _compute_prime_mpr_preview(self):
         for rec in self:
-            op = rec.operation_cee_id
+            op = rec.sale_line_id.operation_cee_id
             if not op or not op.eligible_mpr:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
                 continue
-            categorie = rec.sale_line_id.order_id.partner_id.categorie_precarite
+            categorie = rec.categorie_precarite
             if categorie == 'precaire':
                 taux, forfait_unitaire = 0.90, op.prime_mpr_bleu
             elif categorie == 'modeste':
