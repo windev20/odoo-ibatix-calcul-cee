@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- ── Champ délégataire CEE sur le devis ── -->
     <record id="view_sale_order_form_cee" model="ir.ui.view">
         <field name="name">sale.order.form.ibatix.cee</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- Délégataire et contrat dans l'onglet "Autre information" -->
+            <!-- Délégataire et contrat CEE -->
             <page name="other_information" position="inside">
                 <group string="CEE" name="ibatix_cee_header">
                     <field name="delegataire_cee_id"/>
@@ -18,13 +17,37 @@
                 </group>
             </page>
 
-            <!-- operation_cee_id déclaré pour que les invisible puissent le référencer -->
+            <!-- Style ligne CEE : fond bleu clair -->
+            <xpath expr="//field[@name='order_line']/list" position="attributes">
+                <attribute name="decoration-info">display_type == 'line_cee'</attribute>
+            </xpath>
+
+            <!-- Bouton "+ Opération CEE" dans les contrôles -->
+            <xpath expr="//list/control/create[@name='add_note_control']" position="after">
+                <button string="+ Opération CEE"
+                        name="action_open_select_cee_operation"
+                        type="object"
+                        context="{'order_id': parent.id}"
+                        class="btn-link px-4"/>
+            </xpath>
+
+            <!-- Renommage bouton note -->
+            <xpath expr="//list/control/create[@name='add_note_control']" position="attributes">
+                <attribute name="string">Ajouter une note</attribute>
+            </xpath>
+            <xpath expr="//kanban/control/create[@name='add_note_control']" position="attributes">
+                <attribute name="string">Ajouter une note</attribute>
+            </xpath>
+
+            <!-- Champs invisibles (valeurs accessibles pour les conditions) -->
             <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal'][1]" position="after">
                 <field name="operation_cee_id" column_invisible="1"/>
                 <field name="barth171_wizard_id" column_invisible="1"/>
+                <field name="prime_mpr" column_invisible="1"/>
+                <field name="prime_mpr_ecrete" column_invisible="1"/>
             </xpath>
 
-            <!-- Bouton Calculer prime CEE sur chaque ligne (dans la <list> du sol_o2m) -->
+            <!-- Bouton calculatrice CEE avant qty (visible car line_cee rend comme produit) -->
             <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="before">
                 <button name="action_ouvrir_wizard_cee"
                         type="object"
@@ -34,11 +57,40 @@
                         invisible="not operation_cee_id"/>
             </xpath>
 
-            <!-- Primes CEE dans le pavé des totaux — une ligne par opération -->
+            <!-- Masquer colonnes inutiles sur les lignes CEE -->
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_qty']" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='product_uom_id']" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_unit']" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='tax_ids']" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee'</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal'][1]" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee' or is_downpayment</attribute>
+            </xpath>
+            <xpath expr="//field[@name='order_line']/list/field[@name='price_total'][1]" position="attributes">
+                <attribute name="invisible">display_type == 'line_cee' or is_downpayment</attribute>
+            </xpath>
+
+            <!-- Primes CEE dans le pavé des totaux -->
             <xpath expr="//group[@name='sale_total']/field[@name='tax_totals']" position="after">
                 <field name="prime_cee_details_html"
                        widget="html"
                        invisible="not prime_cee_details_html"
+                       readonly="1"
+                       nolabel="1"/>
+            </xpath>
+
+            <!-- Prime MPR dans le pave des totaux -->
+            <xpath expr="//group[@name='sale_total']/field[@name='prime_cee_details_html']" position="after">
+                <field name="prime_mpr_details_html"
+                       widget="html"
+                       invisible="not prime_mpr_details_html"
                        readonly="1"
                        nolabel="1"/>
             </xpath>

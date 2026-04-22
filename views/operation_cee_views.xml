@@ -45,6 +45,24 @@
                 </div>
             </xpath>
 
+
+            <!-- Onglet MaPrimeRenov -->
+            <xpath expr="//sheet/group" position="after">
+                <notebook>
+                    <page string="MaPrimeRenov'" name="mpr_config">
+                        <group>
+                            <field name="eligible_mpr"/>
+                            <field name="type_calcul_mpr" invisible="not eligible_mpr"/>
+                            <field name="plafond_depense_mpr" invisible="not eligible_mpr"/>
+                        </group>
+                        <group string="Baremes MPR" invisible="not eligible_mpr">
+                            <field name="prime_mpr_bleu"/>
+                            <field name="prime_mpr_jaune"/>
+                            <field name="prime_mpr_violet"/>
+                        </group>
+                    </page>
+                </notebook>
+            </xpath>
             <!-- Onglet Guide + Formule -->
             <xpath expr="//sheet/group" position="after">
                 <notebook invisible="not formule_analysee">

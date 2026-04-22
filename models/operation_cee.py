@@ -111,3 +111,22 @@ class IbatixOperationCee(models.Model):
             'formule_cumac_python': False,
             'formule_description': False,
         })
+
+    # ── Champs MaPrimeRénov' ─────────────────────────────────────────────────
+    eligible_mpr = fields.Boolean(string='Éligible MPR', default=False)
+    type_calcul_mpr = fields.Selection([
+        ('forfait', 'Forfait fixe'),
+        ('par_m2', 'Par m²'),
+        ('par_unite', 'Par équipement'),
+    ], string='Type de calcul MPR', default='forfait')
+    prime_mpr_bleu = fields.Float(
+        string='MPR Très modestes (€/m²/unité)', digits=(10, 2),
+        help='Montant forfaitaire pour ménages très modestes (bleu). '
+             'Pour type par_m2 ou par_unite, saisir le taux unitaire.')
+    prime_mpr_jaune = fields.Float(
+        string='MPR Modestes (€/m²/unité)', digits=(10, 2))
+    prime_mpr_violet = fields.Float(
+        string='MPR Intermédiaires (€/m²/unité)', digits=(10, 2))
+    plafond_depense_mpr = fields.Float(
+        string='Plafond dépense éligible (€)', digits=(10, 2),
+        help='Montant maximum de dépense pris en compte pour le calcul de l\'écrêtement.')

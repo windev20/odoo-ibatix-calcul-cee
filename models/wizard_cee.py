@@ -369,6 +369,7 @@ class WizardCee(models.TransientModel):
             'efficacite_energetique_cee': self.efficacite_energetique,
             'notes_techniques_cee': self.notes_techniques,
         })
+        self.sale_line_id._calculer_prime_mpr()
         return {'type': 'ir.actions.act_window_close'}
 
     # ── Helpers ──────────────────────────────────────────────────────────────

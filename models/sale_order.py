@@ -53,6 +53,58 @@ class SaleOrder(models.Model):
         sanitize=False,
         string='Détail primes CEE',
     )
+    total_prime_mpr = fields.Float(
+        string='Total Prime MPR',
+        compute='_compute_prime_mpr_totals',
+        store=True,
+        digits=(10, 2),
+    )
+    prime_mpr_details_html = fields.Html(
+        compute='_compute_prime_mpr_totals',
+        store=False,
+        sanitize=False,
+        string='Detail primes MPR',
+    )
+
+
+
+    @api.depends('order_line.prime_mpr', 'order_line.operation_cee_id')
+    def _compute_prime_mpr_totals(self):
+        for order in self:
+            lines_with_mpr = order.order_line.filtered(lambda l: l.prime_mpr)
+            order.total_prime_mpr = sum(lines_with_mpr.mapped('prime_mpr'))
+
+            if not lines_with_mpr:
+                order.prime_mpr_details_html = False
+                continue
+
+            grouped = defaultdict(float)
+            for line in lines_with_mpr:
+                code = (line.operation_cee_id.code or '') if line.operation_cee_id else ''
+                grouped[code] += line.prime_mpr
+
+            rows = []
+            for code, amount in grouped.items():
+                label = ('MaPrimeRenov\' ' + code).strip() if code else "MaPrimeRenov'"
+                ecrete = any(
+                    l.prime_mpr_ecrete
+                    for l in lines_with_mpr
+                    if (l.operation_cee_id.code if l.operation_cee_id else '') == code
+                )
+                if ecrete:
+                    label += ' (ecrete)'
+                rows.append(
+                    '<div class="d-flex justify-content-between fw-bold text-primary border-top pt-1 mt-1" '
+                    'style="width:100%;gap:1rem;">'
+                    '<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+                    + label +
+                    '</span>'
+                    '<span style="white-space:nowrap;text-align:right;">'
+                    + _fmt_euro(amount) +
+                    '</span>'
+                    '</div>'
+                )
+            order.prime_mpr_details_html = ''.join(rows)
 
     @api.depends('delegataire_cee_id', 'date_order')
     def _compute_contrat_cee(self):
@@ -226,4 +278,35 @@ class SaleOrder(models.Model):
             'res_id': wizard.id,
             'view_mode': 'form',
             'target': 'new',
+        }
+
+    def action_open_select_cee_operation(self):
+        self.ensure_one()
+        wizard = self.env['ibatix.wizard.select.operation.cee'].create({'order_id': self.id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Ajouter une opération CEE',
+            'res_model': 'ibatix.wizard.select.operation.cee',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    def action_recalculer_prime_cee(self):
+        self.ensure_one()
+        cee_lines = self.order_line.filtered('operation_cee_id')
+        if not cee_lines:
+            return
+        if len(cee_lines) == 1:
+            return cee_lines.action_ouvrir_wizard_cee()
+        # Plusieurs lignes CEE : ouvre le wizard de sélection en mode recalcul
+        wizard = self.env['ibatix.wizard.select.operation.cee'].create({'order_id': self.id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Recalculer une prime CEE',
+            'res_model': 'ibatix.wizard.select.operation.cee',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'recalcul_mode': True},
         }

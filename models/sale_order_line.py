@@ -31,12 +31,12 @@ class SaleOrderLine(models.Model):
     # Champ non-stocké : ID du wizard BAR-TH-171 à ouvrir (consommé côté JS)
     barth171_wizard_id = fields.Char(store=False, default='')
 
-    # ── Lien opération CEE ───────────────────────────────────────────────────
+    # ── Lien opération CEE (direct — fonctionne sur lignes note ET produit) ──
     operation_cee_id = fields.Many2one(
         'ibatix.operation.cee',
-        related='product_id.product_tmpl_id.operation_cee_id',
         string='Opération CEE',
         store=True,
+        ondelete='set null',
     )
 
     # ── Résultats du calcul ──────────────────────────────────────────────────
@@ -79,12 +79,12 @@ class SaleOrderLine(models.Model):
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
 
     def _get_next_product_line(self):
-        """Retourne la ligne produit qui suit immédiatement cette opération CEE."""
+        """Retourne la ligne produit ordinaire qui suit immédiatement cette ligne CEE."""
         self.ensure_one()
         sorted_lines = self.order_id.order_line.sorted(lambda l: (l.sequence, l.id))
         found = False
         for line in sorted_lines:
-            if found and line.product_id and not line.operation_cee_id:
+            if found and line.product_id and not line.display_type:
                 return line
             if line.id == self.id:
                 found = True
@@ -104,11 +104,9 @@ class SaleOrderLine(models.Model):
 
         result = {}
 
-        # Marque — premier mot du nom produit
         if product.name:
             result['marque'] = product.name.split()[0]
 
-        # Modèle — default_code en priorité, sinon référence extérieure dans desc
         if product.default_code:
             result['modele'] = product.default_code
         else:
@@ -119,24 +117,20 @@ class SaleOrderLine(models.Model):
             if m:
                 result['modele'] = m.group(1)
 
-        # COP nominal
         m = re.search(r'COP\s*(?:nominal|chauffage)?\s*[:·]\s*([\d]+[,\.][\d]+)', desc)
         if m:
             result['cop'] = float(m.group(1).replace(',', '.'))
 
-        # SCOP — préférer 35°C
         m = re.search(r'SCOP\s*(?:chauffage\s*)?(?:35[°º]C\s*)?[:·]\s*([\d]+[,\.][\d]+)', desc)
         if m:
             result['scop'] = float(m.group(1).replace(',', '.'))
 
-        # ETAS (ηs) — préférer 35°C
         m = re.search(r'ETAS\s+chauffage[^:]*?35[°º]C\s*[:·]\s*([\d]+)\s*%', desc)
         if not m:
             m = re.search(r'(?:ETAS|ηs)\s*(?:chauffage)?\s*[:·]\s*([\d]+)\s*%', desc)
         if m:
             result['etas'] = float(m.group(1))
 
-        # Puissance kW
         m = re.search(
             r'[Pp]uissance\s*(?:calorifique\s*)?(?:nominale\s*)?[:·]\s*([\d]+[,\.]?[\d]*)\s*kW',
             desc,
@@ -146,23 +140,19 @@ class SaleOrderLine(models.Model):
         if m:
             result['puissance_kw'] = float(m.group(1).replace(',', '.'))
 
-        # Résistance thermique R
         m = re.search(r'[Rr]ésistance\s*thermique\s*R[^:]*[:·]\s*([\d]+[,\.]?[\d]*)', desc)
         if m:
             result['resistance_thermique'] = float(m.group(1).replace(',', '.'))
 
-        # Surface m²
         m = re.search(r'[Ss]urface\s*\(m[²2]\)\s*[:·]\s*([\d]+[,\.]?[\d]*)', desc)
         if m:
             result['surface_m2'] = float(m.group(1).replace(',', '.'))
 
-        # Type logement
         if re.search(r'[Mm]aison\s*individuelle', desc):
             result['type_logement'] = 'maison'
         elif re.search(r'[Aa]ppartement', desc):
             result['type_logement'] = 'appartement'
 
-        # Efficacité énergétique ErP (η%) — pour chaudières/PAC hybrides
         m = re.search(r'[Ee]fficacité\s*[Ee]nergétique\s*[:·]\s*([\d]+[,\.]?[\d]*)\s*%', desc)
         if m:
             result['efficacite_energetique'] = float(m.group(1).replace(',', '.'))
@@ -203,8 +193,11 @@ class SaleOrderLine(models.Model):
             self.order_id.partner_id.zip or ''
         ) or False
 
-        # ── Surface = quantité si pas encore saisie ──────────────────────────
-        surface = self.surface_m2_cee or self.product_uom_qty
+        # ── Ligne produit suivante (pour qty et extraction technique) ─────────
+        next_line = self._get_next_product_line()
+
+        # ── Surface : valeur saisie → quantité ligne suivante → 0 ────────────
+        surface = self.surface_m2_cee or (next_line.product_uom_qty if next_line else 0.0)
 
         # ── Pré-calcul cumac si formule connue et pas encore calculé ─────────
         from .wizard_cee import _evaluer_cumac
@@ -257,11 +250,10 @@ class SaleOrderLine(models.Model):
         }
 
         # ── Auto-extraction depuis le produit suivant ────────────────────────
-        next_line = self._get_next_product_line()
         if next_line:
             extracted = self._extraire_donnees_produit(next_line)
             for key, val in extracted.items():
-                if val:  # Écraser uniquement avec des valeurs non nulles
+                if val:
                     wizard_vals[key] = val
 
         wizard = self.env['ibatix.wizard.cee'].create(wizard_vals)
@@ -275,13 +267,22 @@ class SaleOrderLine(models.Model):
             'target': 'new',
         }
 
+    @api.onchange('operation_cee_id')
+    def _onchange_operation_cee_note(self):
+        """Sur une ligne note : remplit le nom avec le code + libellé de l'opération."""
+        if self.display_type == 'line_note' and self.operation_cee_id:
+            op = self.operation_cee_id
+            self.name = f"{op.code} — {op.name}" if op.code else op.name
 
     @api.onchange('product_id')
     def _onchange_product_barth171_popup(self):
         self.barth171_wizard_id = ''
         if not self.product_id:
+            self.operation_cee_id = False
             return
-        op = self.product_id.product_tmpl_id.operation_cee_id
+        # Synchronise operation_cee_id depuis le produit (lignes produit)
+        self.operation_cee_id = self.product_id.product_tmpl_id.operation_cee_id
+        op = self.operation_cee_id
         if not op or op.code != 'BAR-TH-171':
             return
         if self.surface_chauffee_cee and self.type_logement_cee:
@@ -316,3 +317,86 @@ class SaleOrderLine(models.Model):
                     'barth171_product_pending': 0,
                 })
         return records
+
+    def action_open_select_cee_operation(self):
+        order_id = self.env.context.get('order_id') or (self.order_id.id if self else False)
+        if not order_id:
+            return
+        wizard = self.env['ibatix.wizard.select.operation.cee'].create({'order_id': order_id})
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Ajouter une opération CEE',
+            'res_model': 'ibatix.wizard.select.operation.cee',
+            'res_id': wizard.id,
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
+    # ── Type de ligne CEE (ni produit, ni note, ni section) ──────────────────
+    display_type = fields.Selection(
+        selection_add=[('line_cee', 'Opération CEE')],
+        ondelete={'line_cee': 'cascade'},
+    )
+
+
+    # -- Champs MaPrimeRenov' ------------------------------------------------
+    prime_mpr = fields.Float(string='Prime MPR (EUR)', digits=(10, 2), default=0.0)
+    prime_mpr_ecrete = fields.Boolean(string='Ecretement applique', default=False)
+
+    def _calculer_prime_mpr(self):
+        self.ensure_one()
+        op = self.operation_cee_id
+        if not op or not op.eligible_mpr:
+            self.prime_mpr = 0.0
+            self.prime_mpr_ecrete = False
+            return
+
+        categorie = self.order_id.partner_id.categorie_precarite
+
+        if categorie == 'precaire':
+            taux = 0.90
+            forfait_unitaire = op.prime_mpr_bleu
+        elif categorie == 'modeste':
+            taux = 0.75
+            forfait_unitaire = op.prime_mpr_jaune
+        elif categorie == 'intermediaire':
+            taux = 0.60
+            forfait_unitaire = op.prime_mpr_violet
+        else:
+            self.prime_mpr = 0.0
+            self.prime_mpr_ecrete = False
+            return
+
+        if not forfait_unitaire:
+            self.prime_mpr = 0.0
+            self.prime_mpr_ecrete = False
+            return
+
+        next_line = self._get_next_product_line()
+
+        if op.type_calcul_mpr == 'par_m2':
+            surface = self.surface_m2_cee or self.surface_chauffee_cee or 0.0
+            forfait = forfait_unitaire * surface
+        elif op.type_calcul_mpr == 'par_unite':
+            qty = next_line.product_uom_qty if next_line else 1.0
+            forfait = forfait_unitaire * qty
+        else:
+            forfait = forfait_unitaire
+
+        if not forfait:
+            self.prime_mpr = 0.0
+            self.prime_mpr_ecrete = False
+            return
+
+        ecrete = False
+        plafond = op.plafond_depense_mpr
+        if plafond:
+            depense = next_line.price_total if next_line else 0.0
+            depense_eligible = min(depense, plafond)
+            plafond_ecretement = max(0.0, taux * depense_eligible - (self.prime_cee or 0.0))
+            if forfait > plafond_ecretement:
+                forfait = plafond_ecretement
+                ecrete = True
+
+        self.prime_mpr = round(forfait, 2)
+        self.prime_mpr_ecrete = ecrete
