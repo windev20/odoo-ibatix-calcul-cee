@@ -329,7 +329,13 @@ class SaleOrderLine(models.Model):
                         'classe_regulation_iso52120'):
                 val = extracted.get(key)
                 if val is not None:
-                    result[key] = val
+                    # Normalise la classe ISO 52120 en minuscule ('A'/'B' → 'a'/'b')
+                    if key == 'classe_regulation_iso52120' and isinstance(val, str):
+                        val = val.strip().lower()
+                        if val not in ('a', 'b'):
+                            val = None
+                    if val is not None:
+                        result[key] = val
 
         requis = self._champs_produit_requis()
         missing = [f for f in requis if not result.get(f)]
