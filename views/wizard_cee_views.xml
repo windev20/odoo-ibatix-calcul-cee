@@ -114,7 +114,7 @@
                             <!-- MPR eligible + prime > 0 -->
                             <div class="alert alert-primary"
                                  invisible="not prime_mpr_eligible or not prime_mpr_preview">
-                                <h4 class="mb-0">
+                                <h4 class="mb-1">
                                     MaPrimeRénov’ estimée :
                                     <field name="prime_mpr_preview"
                                            class="fs-4 fw-bold"
@@ -126,20 +126,23 @@
                                         Écrêté
                                     </span>
                                 </h4>
+                                <small class="text-muted">
+                                    <field name="prime_mpr_explication" nolabel="1" readonly="1"/>
+                                </small>
                             </div>
                             <!-- MPR eligible mais prime = 0 (ecretement total) -->
                             <div class="alert alert-warning"
                                  invisible="not prime_mpr_eligible or prime_mpr_preview">
+                                <strong>MaPrimeRénov’ : 0 €</strong>
+                                <br/>
                                 <small>
-                                    <strong>MaPrimeRénov’ : 0 €</strong> —
-                                    Prime écrêtée à zéro : le coût de l’équipement est insuffisant
-                                    par rapport à la prime CEE cumulée.
+                                    <field name="prime_mpr_explication" nolabel="1" readonly="1"/>
                                 </small>
                             </div>
                             <!-- Non eligible -->
                             <div class="alert alert-secondary" invisible="prime_mpr_eligible">
                                 <small class="text-muted">
-                                    Pas de prime MPR : opération non éligible ou ménage supérieur.
+                                    <field name="prime_mpr_explication" nolabel="1" readonly="1"/>
                                 </small>
                             </div>
                         </group>

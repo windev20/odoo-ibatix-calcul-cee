@@ -268,6 +268,10 @@ class WizardCee(models.TransientModel):
         string='Eligibilite MPR',
         compute='_compute_prime_mpr_preview',
     )
+    prime_mpr_explication = fields.Char(
+        string='Explication MPR',
+        compute='_compute_prime_mpr_preview',
+    )
 
     @api.depends(
         'prime_cee', 'surface_m2', 'surface_chauffee',
@@ -275,12 +279,18 @@ class WizardCee(models.TransientModel):
         'sale_line_id.order_id.partner_id.categorie_precarite',
     )
     def _compute_prime_mpr_preview(self):
+        _labels = {
+            'precaire': 'Tres modeste (bleu, taux 90 %)',
+            'modeste': 'Modeste (jaune, taux 75 %)',
+            'intermediaire': 'Intermediaire (violet, taux 60 %)',
+        }
         for rec in self:
             op = rec.sale_line_id.operation_cee_id
             if not op or not op.eligible_mpr:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
                 rec.prime_mpr_eligible = False
+                rec.prime_mpr_explication = "Cette operation n'est pas eligible a MaPrimeRenov'."
                 continue
             categorie = rec.categorie_precarite
             if categorie == 'precaire':
@@ -293,11 +303,14 @@ class WizardCee(models.TransientModel):
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
                 rec.prime_mpr_eligible = False
+                rec.prime_mpr_explication = "Menage superieur : non eligible a MaPrimeRenov' par geste."
                 continue
             rec.prime_mpr_eligible = True
+            label_cat = _labels.get(categorie, categorie)
             if not forfait_unitaire:
                 rec.prime_mpr_preview = 0.0
                 rec.prime_mpr_ecrete_preview = False
+                rec.prime_mpr_explication = f"Bareme non renseigne pour la categorie {label_cat}."
                 continue
             if op.type_calcul_mpr == 'par_m2':
                 surface = rec.surface_m2 or rec.surface_chauffee or 0.0
@@ -317,6 +330,19 @@ class WizardCee(models.TransientModel):
             rec.prime_mpr_preview = round(forfait, 2)
             rec.prime_mpr_ecrete_preview = ecrete
             rec.prime_mpr_eligible = True
+            taux_pct = int(taux * 100)
+            if ecrete:
+                rec.prime_mpr_explication = (
+                    f"Categorie {label_cat}. "
+                    f"Ecretement : {taux_pct} % x {depense_eligible:.0f} EUR (depense eligible)"
+                    f" - {rec.prime_cee:.0f} EUR (prime CEE) = {forfait:.0f} EUR."
+                )
+            else:
+                plafond_txt = f", plafond depense {plafond:.0f} EUR" if plafond else ""
+                rec.prime_mpr_explication = (
+                    f"Categorie {label_cat}. "
+                    f"Forfait {forfait:.0f} EUR (taux {taux_pct} %{plafond_txt})."
+                )
 
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',
