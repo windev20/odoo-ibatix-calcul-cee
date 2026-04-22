@@ -109,6 +109,26 @@
                                     × <field name="valo_cee" nolabel="1" readonly="1"/> €/MWhc
                                 </small>
                             </div>
+                            <div class="alert alert-primary" invisible="not prime_mpr_preview">
+                                <h4 class="mb-0">
+                                    MaPrimeRénov’ estimée :
+                                    <field name="prime_mpr_preview"
+                                           class="fs-4 fw-bold"
+                                           nolabel="1"
+                                           readonly="1"/>
+                                    €
+                                    <span invisible="not prime_mpr_ecrete_preview"
+                                          class="badge bg-warning text-dark ms-2 fs-6">
+                                        Écrêté
+                                    </span>
+                                </h4>
+                                <field name="prime_mpr_ecrete_preview" invisible="1"/>
+                            </div>
+                            <div class="alert alert-secondary" invisible="prime_mpr_preview">
+                                <small class="text-muted">
+                                    Pas de prime MPR : opération non éligible ou ménage supérieur.
+                                </small>
+                            </div>
                         </group>
                     </page>
 

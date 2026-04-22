@@ -255,6 +255,57 @@ class WizardCee(models.TransientModel):
         for rec in self:
             rec.prime_cee = rec.cumac_cee * rec.valo_cee / 1000
 
+    prime_mpr_preview = fields.Float(
+        string='Estimation MPR (EUR)',
+        compute='_compute_prime_mpr_preview',
+        digits=(10, 2),
+    )
+    prime_mpr_ecrete_preview = fields.Boolean(
+        string='Ecretement MPR',
+        compute='_compute_prime_mpr_preview',
+    )
+
+    @api.depends('prime_cee', 'surface_m2', 'surface_chauffee', 'sale_line_id')
+    def _compute_prime_mpr_preview(self):
+        for rec in self:
+            op = rec.operation_cee_id
+            if not op or not op.eligible_mpr:
+                rec.prime_mpr_preview = 0.0
+                rec.prime_mpr_ecrete_preview = False
+                continue
+            categorie = rec.sale_line_id.order_id.partner_id.categorie_precarite
+            if categorie == 'precaire':
+                taux, forfait_unitaire = 0.90, op.prime_mpr_bleu
+            elif categorie == 'modeste':
+                taux, forfait_unitaire = 0.75, op.prime_mpr_jaune
+            elif categorie == 'intermediaire':
+                taux, forfait_unitaire = 0.60, op.prime_mpr_violet
+            else:
+                rec.prime_mpr_preview = 0.0
+                rec.prime_mpr_ecrete_preview = False
+                continue
+            if not forfait_unitaire:
+                rec.prime_mpr_preview = 0.0
+                rec.prime_mpr_ecrete_preview = False
+                continue
+            if op.type_calcul_mpr == 'par_m2':
+                surface = rec.surface_m2 or rec.surface_chauffee or 0.0
+                forfait = forfait_unitaire * surface
+            else:
+                forfait = forfait_unitaire
+            ecrete = False
+            plafond = op.plafond_depense_mpr
+            if plafond:
+                next_line = rec.sale_line_id._get_next_product_line()
+                depense = next_line.price_total if next_line else 0.0
+                depense_eligible = min(depense, plafond)
+                plafond_ecr = max(0.0, taux * depense_eligible - (rec.prime_cee or 0.0))
+                if forfait > plafond_ecr:
+                    forfait = plafond_ecr
+                    ecrete = True
+            rec.prime_mpr_preview = round(forfait, 2)
+            rec.prime_mpr_ecrete_preview = ecrete
+
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',
                   'zone_climatique', 'type_logement', 'profil_soutirage',
