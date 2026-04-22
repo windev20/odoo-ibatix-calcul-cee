@@ -99,7 +99,8 @@
                                    invisible="champs_requis and 'profil_soutirage' not in (champs_requis or '')"/>
                             <field name="efficacite_energetique"
                                    invisible="champs_requis and 'efficacite_energetique' not in (champs_requis or '')"/>
-                            <field name="type_energie"/>
+                            <field name="type_energie"
+                                   invisible="champs_requis and 'type_energie' not in (champs_requis or '')"/>
                         </group>
                         <group string="Pompe à chaleur (BAR-TH-171)" col="2"
                                invisible="champs_requis and 'classe_regulateur' not in (champs_requis or '')">
