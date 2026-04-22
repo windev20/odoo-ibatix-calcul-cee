@@ -90,6 +90,10 @@ class SaleOrderLine(models.Model):
         ('IV', 'Classe IV'), ('V', 'Classe V'), ('VI', 'Classe VI'),
         ('VII', 'Classe VII'), ('VIII', 'Classe VIII'),
     ], string='Classe du régulateur')
+    classe_regulation_iso52120_cee = fields.Selection([
+        ('a', 'Classe A (NF EN ISO 52120-1)'),
+        ('b', 'Classe B (NF EN ISO 52120-1)'),
+    ], string='Classe de régulation (ISO 52120-1)')
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
 
     def _get_next_product_line(self):
@@ -239,6 +243,8 @@ class SaleOrderLine(models.Model):
             requis.extend(['cop', 'scop'])
         if op and op.code == 'BAR-TH-171':
             requis.extend(['type_application_pac', 'usage_pac', 'classe_regulateur'])
+        if op and op.code == 'BAR-TH-173':
+            requis.extend(['surface_chauffee', 'type_logement', 'classe_regulation_iso52120'])
         return requis
 
     def _extraire_donnees_produit_ia(self, product_line, api_key):
@@ -383,6 +389,7 @@ class SaleOrderLine(models.Model):
                 zone_climatique=zone or '',
                 profil_soutirage=self.profil_soutirage_cee or '',
                 efficacite_energetique=self.efficacite_energetique_cee,
+                classe_regulation_iso52120=self.classe_regulation_iso52120_cee or '',
             )
 
         # ── Guide technique déjà analysé ? ──────────────────────────────────
@@ -412,6 +419,7 @@ class SaleOrderLine(models.Model):
             'type_application_pac': self.type_application_pac_cee or False,
             'usage_pac': self.usage_pac_cee or False,
             'classe_regulateur': self.classe_regulateur_cee or False,
+            'classe_regulation_iso52120': self.classe_regulation_iso52120_cee or False,
             'notes_techniques': self.notes_techniques_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,

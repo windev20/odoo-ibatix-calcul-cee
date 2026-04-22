@@ -101,10 +101,15 @@
                                    invisible="champs_requis and 'efficacite_energetique' not in (champs_requis or '')"/>
                             <field name="type_energie"/>
                         </group>
-                        <group string="Pompe à chaleur (BAR-TH-171)" col="2">
+                        <group string="Pompe à chaleur (BAR-TH-171)" col="2"
+                               invisible="champs_requis and 'classe_regulateur' not in (champs_requis or '')">
                             <field name="type_application_pac"/>
                             <field name="usage_pac"/>
                             <field name="classe_regulateur"/>
+                        </group>
+                        <group string="Régulation pièce par pièce (BAR-TH-173)" col="2"
+                               invisible="champs_requis and 'classe_regulation_iso52120' not in (champs_requis or '')">
+                            <field name="classe_regulation_iso52120"/>
                         </group>
                         <group string="Notes" col="1">
                             <field name="notes_techniques" nolabel="1"/>

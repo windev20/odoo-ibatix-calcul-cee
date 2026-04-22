@@ -22,7 +22,8 @@ _CHAMPS_DISPONIBLES = (
     "type_logement (string : 'maison' ou 'appartement'), "
     "facteur_logement (valeur numérique : maison=1.0 appartement=0.75), "
     "profil_soutirage (profil de soutirage chauffe-eau : string 'M', 'L' ou 'XL'), "
-    "efficacite_energetique (efficacité énergétique en % : float, ex. 95.0, 100.0, 110.0)"
+    "efficacite_energetique (efficacité énergétique en % : float, ex. 95.0, 100.0, 110.0), "
+    "classe_regulation_iso52120 (classe de régulation BAR-TH-173 : string 'a' ou 'b')"
 )
 
 
@@ -30,7 +31,8 @@ def _evaluer_cumac(formule, surface_m2=0.0, resistance_thermique=0.0,
                    puissance_kw=0.0, cop=0.0, scop=0.0, etas=0.0,
                    nb_logements=0, surface_chauffee=0.0,
                    type_logement='', zone_climatique='',
-                   profil_soutirage='', efficacite_energetique=0.0):
+                   profil_soutirage='', efficacite_energetique=0.0,
+                   classe_regulation_iso52120=''):
     """Évalue la formule Python de cumac dans un contexte sécurisé."""
     if not formule:
         return 0.0
@@ -49,6 +51,7 @@ def _evaluer_cumac(formule, surface_m2=0.0, resistance_thermique=0.0,
         'facteur_logement': {'maison': 1.0, 'appartement': 0.75}.get(type_logement or '', 1.0),
         'profil_soutirage': profil_soutirage or '',
         'efficacite_energetique': efficacite_energetique or 0.0,
+        'classe_regulation_iso52120': classe_regulation_iso52120 or '',
         'max': max, 'min': min, 'round': round,
     }
     try:
@@ -253,6 +256,10 @@ class WizardCee(models.TransientModel):
         ('IV', 'Classe IV'), ('V', 'Classe V'), ('VI', 'Classe VI'),
         ('VII', 'Classe VII'), ('VIII', 'Classe VIII'),
     ], string='Classe du régulateur')
+    classe_regulation_iso52120 = fields.Selection([
+        ('a', 'Classe A (NF EN ISO 52120-1)'),
+        ('b', 'Classe B (NF EN ISO 52120-1)'),
+    ], string='Classe de régulation (ISO 52120-1)')
     notes_techniques = fields.Text(string='Notes complémentaires')
 
     # ── Calcul ───────────────────────────────────────────────────────────────
@@ -361,7 +368,7 @@ class WizardCee(models.TransientModel):
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',
                   'zone_climatique', 'type_logement', 'profil_soutirage',
-                  'efficacite_energetique')
+                  'efficacite_energetique', 'classe_regulation_iso52120')
     def _onchange_params_techniques(self):
         formule = self.operation_cee_id.formule_cumac_python if self.operation_cee_id else ''
         if not formule:
@@ -380,6 +387,7 @@ class WizardCee(models.TransientModel):
             zone_climatique=self.zone_climatique or '',
             profil_soutirage=self.profil_soutirage or '',
             efficacite_energetique=self.efficacite_energetique,
+            classe_regulation_iso52120=self.classe_regulation_iso52120 or '',
         )
 
     # ── Actions ──────────────────────────────────────────────────────────────
@@ -473,6 +481,7 @@ class WizardCee(models.TransientModel):
             'type_application_pac_cee': self.type_application_pac or False,
             'usage_pac_cee': self.usage_pac or False,
             'classe_regulateur_cee': self.classe_regulateur or False,
+            'classe_regulation_iso52120_cee': self.classe_regulation_iso52120 or False,
             'notes_techniques_cee': self.notes_techniques,
         })
         self.sale_line_id._calculer_prime_mpr()
