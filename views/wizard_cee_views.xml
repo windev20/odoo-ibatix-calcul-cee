@@ -83,6 +83,11 @@
                                    invisible="champs_requis and 'efficacite_energetique' not in (champs_requis or '')"/>
                             <field name="type_energie"/>
                         </group>
+                        <group string="Pompe à chaleur (BAR-TH-171)" col="2">
+                            <field name="type_application_pac"/>
+                            <field name="usage_pac"/>
+                            <field name="classe_regulateur"/>
+                        </group>
                         <group string="Notes" col="1">
                             <field name="notes_techniques" nolabel="1"/>
                         </group>

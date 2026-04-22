@@ -76,6 +76,18 @@ class SaleOrderLine(models.Model):
         ('M', 'M'), ('L', 'L'), ('XL', 'XL'),
     ], string='Profil de soutirage')
     efficacite_energetique_cee = fields.Float(string='Efficacité énergétique (%)', digits=(10, 1))
+    type_application_pac_cee = fields.Selection([
+        ('basse_temperature', 'Basse température (35°C — plancher/plafond/ventiloconvecteur)'),
+        ('haute_temperature', 'Moyenne/haute température (55°C — radiateurs)'),
+    ], string='Application PAC')
+    usage_pac_cee = fields.Selection([
+        ('chauffage', 'Chauffage seul'),
+        ('chauffage_ecs', 'Chauffage + eau chaude sanitaire'),
+    ], string='Usage PAC')
+    classe_regulateur_cee = fields.Selection([
+        ('IV', 'Classe IV'), ('V', 'Classe V'), ('VI', 'Classe VI'),
+        ('VII', 'Classe VII'), ('VIII', 'Classe VIII'),
+    ], string='Classe du régulateur')
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
 
     def _get_next_product_line(self):
@@ -244,6 +256,9 @@ class SaleOrderLine(models.Model):
             'zone_climatique': zone or False,
             'profil_soutirage': self.profil_soutirage_cee or False,
             'efficacite_energetique': self.efficacite_energetique_cee,
+            'type_application_pac': self.type_application_pac_cee or False,
+            'usage_pac': self.usage_pac_cee or False,
+            'classe_regulateur': self.classe_regulateur_cee or False,
             'notes_techniques': self.notes_techniques_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,

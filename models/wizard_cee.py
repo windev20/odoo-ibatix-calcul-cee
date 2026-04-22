@@ -239,6 +239,18 @@ class WizardCee(models.TransientModel):
         ('XL', 'XL'),
     ], string='Profil de soutirage')
     efficacite_energetique = fields.Float(string='Efficacité énergétique (%)', digits=(10, 1))
+    type_application_pac = fields.Selection([
+        ('basse_temperature', 'Basse température (35°C — plancher/plafond/ventiloconvecteur)'),
+        ('haute_temperature', 'Moyenne/haute température (55°C — radiateurs)'),
+    ], string='Application PAC')
+    usage_pac = fields.Selection([
+        ('chauffage', 'Chauffage seul'),
+        ('chauffage_ecs', 'Chauffage + eau chaude sanitaire'),
+    ], string='Usage PAC')
+    classe_regulateur = fields.Selection([
+        ('IV', 'Classe IV'), ('V', 'Classe V'), ('VI', 'Classe VI'),
+        ('VII', 'Classe VII'), ('VIII', 'Classe VIII'),
+    ], string='Classe du régulateur')
     notes_techniques = fields.Text(string='Notes complémentaires')
 
     # ── Calcul ───────────────────────────────────────────────────────────────
@@ -456,6 +468,9 @@ class WizardCee(models.TransientModel):
             'zone_climatique_cee': self.zone_climatique or False,
             'profil_soutirage_cee': self.profil_soutirage or False,
             'efficacite_energetique_cee': self.efficacite_energetique,
+            'type_application_pac_cee': self.type_application_pac or False,
+            'usage_pac_cee': self.usage_pac or False,
+            'classe_regulateur_cee': self.classe_regulateur or False,
             'notes_techniques_cee': self.notes_techniques,
         })
         self.sale_line_id._calculer_prime_mpr()
