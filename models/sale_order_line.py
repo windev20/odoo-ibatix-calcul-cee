@@ -267,15 +267,17 @@ class SaleOrderLine(models.Model):
             raw = body.get('content', [{}])[0].get('text', '').strip()
             extracted = json.loads(raw)
         except Exception:
-            # Fallback regex si l'IA échoue
-            return self._extraire_donnees_produit(product_line), []
+            extracted = None
 
-        result = {}
-        for key in ('marque', 'modele', 'etas', 'puissance_kw', 'cop', 'scop',
-                    'type_application_pac', 'usage_pac', 'classe_regulateur'):
-            val = extracted.get(key)
-            if val is not None:
-                result[key] = val
+        if extracted is None:
+            result = self._extraire_donnees_produit(product_line)
+        else:
+            result = {}
+            for key in ('marque', 'modele', 'etas', 'puissance_kw', 'cop', 'scop',
+                        'type_application_pac', 'usage_pac', 'classe_regulateur'):
+                val = extracted.get(key)
+                if val is not None:
+                    result[key] = val
 
         requis = self._champs_produit_requis()
         missing = [f for f in requis if not result.get(f)]
