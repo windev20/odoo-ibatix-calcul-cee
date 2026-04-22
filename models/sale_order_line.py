@@ -207,7 +207,7 @@ class SaleOrderLine(models.Model):
         elif re.search(r'[Uu]sage\s*[:·].*(?:ECS|eau\s*chaude)', desc):
             result['usage_pac'] = 'chauffage_ecs'
 
-        m = re.search(r'[Cc]lasse\s*du\s*r[ée]gulateur\s*[:·]\s*(IV|V|VI|VII|VIII)', desc)
+        m = re.search(r'[Cc]lasse\s*du\s*r[ée]gulateur\s*[:·]\s*(VIII|VII|VI|IV|V)', desc)
         if m:
             result['classe_regulateur'] = m.group(1)
 
