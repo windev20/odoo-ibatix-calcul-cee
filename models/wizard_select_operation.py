@@ -27,8 +27,11 @@ class WizardSelectOperationCee(models.TransientModel):
             'price_unit': 0,
         })
 
-        # Si l'opération a des champs requis → popup simplifiée vendeur
-        if op.champs_requis:
+        # Popup simplifiée vendeur — uniquement pour les opérations avec wizard activé
+        # BAR-TH-171 est la seule opération avec une popup dédiée pour l'instant.
+        # Ajouter les codes ici au fur et à mesure du développement des popups.
+        _CODES_AVEC_WIZARD = {'BAR-TH-171'}
+        if op.code in _CODES_AVEC_WIZARD:
             wizard = self.env['ibatix.wizard.cee.simple'].create({'line_id': line.id})
             return {
                 'type': 'ir.actions.act_window',
