@@ -54,7 +54,7 @@
                         icon="fa-calculator"
                         title="Calculer la prime CEE"
                         class="btn btn-sm btn-info"
-                        invisible="not operation_cee_id"/>
+                        invisible="display_type != 'line_cee' or not operation_cee_id"/>
             </xpath>
 
             <!-- Masquer colonnes inutiles sur les lignes CEE -->
