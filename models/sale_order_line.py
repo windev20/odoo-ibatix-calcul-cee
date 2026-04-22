@@ -228,6 +228,7 @@ class SaleOrderLine(models.Model):
         'type_application_pac': 'Application PAC (BT / MT-HT)',
         'usage_pac': 'Usage PAC (chauffage / + ECS)',
         'classe_regulateur': 'Classe du régulateur',
+        'classe_regulation_iso52120': 'Classe de régulation ISO 52120-1 (A ou B)',
     }
 
     def _champs_produit_requis(self):
@@ -263,7 +264,7 @@ class SaleOrderLine(models.Model):
             return {}, self._champs_produit_requis()
 
         prompt = (
-            "Tu es un expert en pompes a chaleur et equipements CEE. "
+            "Tu es un expert en equipements CEE (chauffage, regulation, isolation). "
             "Extrait les donnees techniques du descriptif produit suivant.\n\n"
             f"Descriptif :\n{desc}\n\n"
             "Retourne UNIQUEMENT un JSON valide avec ces cles (null si non trouve) :\n"
@@ -276,7 +277,8 @@ class SaleOrderLine(models.Model):
             '  "scop": decimal ou null,\n'
             '  "type_application_pac": "basse_temperature" ou "haute_temperature" ou null,\n'
             '  "usage_pac": "chauffage" ou "chauffage_ecs" ou null,\n'
-            '  "classe_regulateur": "IV" ou "V" ou "VI" ou "VII" ou "VIII" ou null\n'
+            '  "classe_regulateur": "IV" ou "V" ou "VI" ou "VII" ou "VIII" ou null,\n'
+            '  "classe_regulation_iso52120": "a" ou "b" ou null\n'
             '}\n\n'
             "Regles d'extraction :\n"
             "- etas : rendement saisonnier en chauffage (note ηs ou ETAS), a 35°C si disponible,"
@@ -285,7 +287,9 @@ class SaleOrderLine(models.Model):
             " basse_temperature si plancher chauffant / ventiloconvecteur / 35°C\n"
             "- usage_pac : chauffage si chauffage seul, chauffage_ecs si chauffage + ECS ou eau chaude sanitaire\n"
             "- classe_regulateur : chiffre romain IV a VIII, chercher 'Classe du regulateur'\n"
-            "- marque : fabricant (ex: Mitsubishi, Atlantic, Daikin...)\n"
+            "- classe_regulation_iso52120 : classe de regulation NF EN ISO 52120-1 ;"
+            " retourner 'a' si Classe A, 'b' si Classe B\n"
+            "- marque : fabricant (ex: Mitsubishi, Atlantic, Netatmo, Delta Dore...)\n"
             "- modele : reference commerciale principale de l'equipement\n"
             "- cop : COP nominal (A7/W35), nombre decimal\n"
             "- scop : SCOP a 35°C, nombre decimal\n"
@@ -321,7 +325,8 @@ class SaleOrderLine(models.Model):
         else:
             result = {}
             for key in ('marque', 'modele', 'etas', 'puissance_kw', 'cop', 'scop',
-                        'type_application_pac', 'usage_pac', 'classe_regulateur'):
+                        'type_application_pac', 'usage_pac', 'classe_regulateur',
+                        'classe_regulation_iso52120'):
                 val = extracted.get(key)
                 if val is not None:
                     result[key] = val
