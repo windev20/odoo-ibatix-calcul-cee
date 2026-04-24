@@ -9,6 +9,7 @@
                 <field name="sale_line_id" invisible="1"/>
                 <field name="fiche_analysee" invisible="1"/>
                 <field name="champs_requis" invisible="1"/>
+                <field name="champs_eligibilite" invisible="1"/>
                 <field name="formule_cumac_python" invisible="1"/>
 
                 <!-- Bandeau de contexte -->
@@ -114,6 +115,45 @@
                         </group>
                         <group string="Notes" col="1">
                             <field name="notes_techniques" nolabel="1"/>
+                        </group>
+                        <group string="Critères d'éligibilité" col="2"
+                               invisible="not champs_eligibilite">
+                            <field name="uw"
+                                   invisible="'uw' not in (champs_eligibilite or '')"/>
+                            <field name="sw"
+                                   invisible="'sw' not in (champs_eligibilite or '')"/>
+                            <field name="nb_fenetres"
+                                   invisible="'nb_fenetres' not in (champs_eligibilite or '')"/>
+                            <field name="type_fenetre"
+                                   invisible="'type_fenetre' not in (champs_eligibilite or '')"/>
+                            <field name="rendement_saisonnier"
+                                   invisible="'rendement_saisonnier' not in (champs_eligibilite or '')"/>
+                            <field name="label_energie"
+                                   invisible="'label_energie' not in (champs_eligibilite or '')"/>
+                            <field name="type_vmc"
+                                   invisible="'type_vmc' not in (champs_eligibilite or '')"/>
+                            <field name="surface_capteurs"
+                                   invisible="'surface_capteurs' not in (champs_eligibilite or '')"/>
+                            <field name="nb_equipements"
+                                   invisible="'nb_equipements' not in (champs_eligibilite or '')"/>
+                            <field name="epaisseur_isolant"
+                                   invisible="'epaisseur_isolant' not in (champs_eligibilite or '')"/>
+                            <field name="volume_ballon"
+                                   invisible="'volume_ballon' not in (champs_eligibilite or '')"/>
+                            <field name="secteur_activite"
+                                   invisible="'secteur_activite' not in (champs_eligibilite or '') and 'secteur_activite' not in (champs_requis or '')"/>
+                            <field name="ug"
+                                   invisible="'ug' not in (champs_eligibilite or '')"/>
+                            <field name="type_serre"
+                                   invisible="'type_serre' not in (champs_eligibilite or '') and 'type_serre' not in (champs_requis or '')"/>
+                            <field name="thermicite"
+                                   invisible="'thermicite' not in (champs_eligibilite or '') and 'thermicite' not in (champs_requis or '')"/>
+                            <field name="delta_t"
+                                   invisible="'delta_t' not in (champs_eligibilite or '') and 'delta_t' not in (champs_requis or '')"/>
+                            <field name="type_condensation"
+                                   invisible="'type_condensation' not in (champs_eligibilite or '') and 'type_condensation' not in (champs_requis or '')"/>
+                            <field name="mode_fonctionnement"
+                                   invisible="'mode_fonctionnement' not in (champs_eligibilite or '') and 'mode_fonctionnement' not in (champs_requis or '')"/>
                         </group>
                     </page>
 

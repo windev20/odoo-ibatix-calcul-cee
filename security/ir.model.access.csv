@@ -4,3 +4,4 @@ access_wizard_cee_manquants,ibatix.wizard.cee.manquants,ibatix_calcul_cee.model_
 access_wizard_barth171,ibatix.wizard.barth171,ibatix_calcul_cee.model_ibatix_wizard_barth171,base.group_user,1,1,1,1
 access_wizard_select_operation_cee,ibatix.wizard.select.operation.cee,ibatix_calcul_cee.model_ibatix_wizard_select_operation_cee,base.group_user,1,1,1,1
 access_wizard_cee_simple,ibatix.wizard.cee.simple,ibatix_calcul_cee.model_ibatix_wizard_cee_simple,base.group_user,1,1,1,1
+access_wizard_baten111,ibatix.wizard.baten111,ibatix_calcul_cee.model_ibatix_wizard_baten111,base.group_user,1,1,1,1

@@ -20,6 +20,11 @@ class SaleOrder(models.Model):
     barth171_energie_pending = fields.Char(default='')
     barth171_product_pending = fields.Integer(default=0)
 
+    # Valeurs en attente pour BAT-EN-111
+    baten111_type_vmc_pending = fields.Char(default='')
+    baten111_secteur_activite_pending = fields.Char(default='')
+    baten111_product_pending = fields.Integer(default=0)
+
     delegataire_cee_id = fields.Many2one(
         'ibatix.delegataire.cee',
         string='Délégataire CEE',

@@ -27,16 +27,26 @@ class WizardSelectOperationCee(models.TransientModel):
             'price_unit': 0,
         })
 
-        # Popup simplifiée vendeur — uniquement pour les opérations avec wizard activé
-        # BAR-TH-171 est la seule opération avec une popup dédiée pour l'instant.
-        # Ajouter les codes ici au fur et à mesure du développement des popups.
-        _CODES_AVEC_WIZARD = {'BAR-TH-171'}
-        if op.code in _CODES_AVEC_WIZARD:
+        if op.code == 'BAR-TH-171':
             wizard = self.env['ibatix.wizard.cee.simple'].create({'line_id': line.id})
             return {
                 'type': 'ir.actions.act_window',
-                'name': f"Paramètres — {op.code or op.name}",
+                'name': "Paramètres — BAR-TH-171",
                 'res_model': 'ibatix.wizard.cee.simple',
+                'res_id': wizard.id,
+                'view_mode': 'form',
+                'target': 'new',
+            }
+
+        if op.code == 'BAT-EN-111':
+            wizard = self.env['ibatix.wizard.baten111'].create({
+                'order_id': self.order_id.id,
+                'line_id': line.id,
+            })
+            return {
+                'type': 'ir.actions.act_window',
+                'name': "Paramètres — BAT-EN-111",
+                'res_model': 'ibatix.wizard.baten111',
                 'res_id': wizard.id,
                 'view_mode': 'form',
                 'target': 'new',

@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import time
 import urllib.error
 import urllib.request
 
@@ -23,7 +24,26 @@ _CHAMPS_DISPONIBLES = (
     "facteur_logement (valeur numérique : maison=1.0 appartement=0.75), "
     "profil_soutirage (profil de soutirage chauffe-eau : string 'M', 'L' ou 'XL'), "
     "efficacite_energetique (efficacité énergétique en % : float, ex. 95.0, 100.0, 110.0), "
-    "classe_regulation_iso52120 (classe de régulation BAR-TH-173 : string 'a' ou 'b')"
+    "classe_regulation_iso52120 (classe de régulation BAR-TH-173 : string 'a' ou 'b'), "
+    "uw (coefficient de transmission thermique Uw en W/m2.K : float), "
+    "sw (facteur solaire Sw : float), "
+    "nb_fenetres (nombre de fenetres ou portes-fenetres posees : entier), "
+    "type_fenetre (type de fenetre : string 'toiture', 'double' ou 'autre'), "
+    "rendement_saisonnier (rendement saisonnier en % : float, ex. 87.3), "
+    "label_energie (classe energetique : string, ex. 'A+', 'A++'), "
+    "type_vmc (type de ventilation dans les locaux : string 'naturelle', 'simple_flux', 'double_flux', 'parietodynamique' ou 'vec'), "
+    "surface_capteurs (surface des capteurs solaires en m2 : float), "
+    "nb_equipements (nombre d'equipements installes : entier), "
+    "epaisseur_isolant (epaisseur de l'isolant en mm : float), "
+    "volume_ballon (volume du ballon d'eau chaude en litres : float), "
+    "secteur_activite (secteur d'activite du batiment : string parmi 'bureaux', 'enseignement', "
+    "'commerces', 'hotellerie', 'sante', 'logistique', 'industrie', 'agriculture', 'autre'), "
+    "ug (coefficient de transmission thermique du vitrage seul Ug en W/m2.K : float), "
+    "type_serre (type de serre agricole : string 'maraichere' ou 'horticole'), "
+    "thermicite (niveau de thermicite de la serre : string 'froide', 'temperee' ou 'chaude'), "
+    "delta_t (ecart de temperature du process industriel en degres C : float), "
+    "type_condensation (type de condensation : string 'eau' ou 'air'), "
+    "mode_fonctionnement (mode de fonctionnement de l'equipement : string libre)"
 )
 
 
@@ -32,7 +52,12 @@ def _evaluer_cumac(formule, surface_m2=0.0, resistance_thermique=0.0,
                    nb_logements=0, surface_chauffee=0.0,
                    type_logement='', zone_climatique='',
                    profil_soutirage='', efficacite_energetique=0.0,
-                   classe_regulation_iso52120=''):
+                   classe_regulation_iso52120='',
+                   secteur_activite='', delta_t=0.0, type_condensation='',
+                   mode_fonctionnement='', type_serre='', thermicite='',
+                   surface_capteurs=0.0, nb_equipements=0,
+                   epaisseur_isolant=0.0, volume_ballon=0.0,
+                   rendement_saisonnier=0.0, ug=0.0):
     """Évalue la formule Python de cumac dans un contexte sécurisé."""
     if not formule:
         return 0.0
@@ -52,6 +77,18 @@ def _evaluer_cumac(formule, surface_m2=0.0, resistance_thermique=0.0,
         'profil_soutirage': profil_soutirage or '',
         'efficacite_energetique': efficacite_energetique or 0.0,
         'classe_regulation_iso52120': classe_regulation_iso52120 or '',
+        'secteur_activite': secteur_activite or '',
+        'delta_t': delta_t or 0.0,
+        'type_condensation': type_condensation or '',
+        'mode_fonctionnement': mode_fonctionnement or '',
+        'type_serre': type_serre or '',
+        'thermicite': thermicite or '',
+        'surface_capteurs': surface_capteurs or 0.0,
+        'nb_equipements': nb_equipements or 0,
+        'epaisseur_isolant': epaisseur_isolant or 0.0,
+        'volume_ballon': volume_ballon or 0.0,
+        'rendement_saisonnier': rendement_saisonnier or 0.0,
+        'ug': ug or 0.0,
         'max': max, 'min': min, 'round': round,
     }
     try:
@@ -72,28 +109,38 @@ def _appel_claude_analyse_complete(pdf_bytes, api_key, operation_code, operation
         f"Tu es un expert CEE français. Opération : {operation_code} — {operation_name}.\n\n"
         f"Variables disponibles dans notre logiciel : {_CHAMPS_DISPONIBLES}\n\n"
         "Analyse cette fiche CEE et retourne UN SEUL objet JSON valide (sans markdown ni balises), "
-        "avec exactement ces 4 clés :\n"
+        "avec exactement ces 5 clés :\n"
         "{\n"
         '  "guide_html": "<h4>...</h4>...",\n'
         '  "champs_requis": "var1,var2",\n'
+        '  "champs_eligibilite": "var3,var4",\n'
         '  "formule_cumac_python": "expression Python",\n'
         '  "formule_description": "description lisible"\n'
         "}\n\n"
         "Règles :\n"
         "- guide_html : HTML compact (<h4>,<ul>,<li>,<strong>) listant conditions d'éligibilité, "
         "données techniques à collecter, documents justificatifs. En français. Sans CSS.\n"
-        "- champs_requis : UNIQUEMENT les noms de variables ci-dessus nécessaires au calcul, "
+        "- champs_requis : UNIQUEMENT les noms de variables ci-dessus nécessaires au CALCUL du cumac, "
         "séparés par virgule. Inclure zone_climatique si la formule varie selon la zone.\n"
-        "- formule_cumac_python : expression Python évaluable utilisant ces variables. "
-        "Intègre les constantes directement (durée de vie, coefficients). "
-        "Utilise facteur_zone et facteur_logement pour les facteurs numériques. "
+        "- champs_eligibilite : noms de variables ci-dessus nécessaires pour VERIFIER l'eligibilite "
+        "et figurer sur les documents (facture, attestation). Separes par virgule. "
+        "Ne pas repeter les variables deja dans champs_requis. "
+        "Exemple pour BAR-EN-104 : uw,sw,nb_fenetres,type_fenetre\n"
+        "- formule_cumac_python : UNE SEULE expression Python evaluable directement. "
+        "INTERDIT : def, lambda, return, blocs if multiligne. "
+        "Integre les constantes directement. "
+        "Utilise facteur_zone et facteur_logement pour les facteurs numeriques. "
         "Exemple : surface_m2 * resistance_thermique * 36.5 * facteur_zone\n"
         "- formule_description : formule lisible pour l'utilisateur.\n"
-        "Réponds uniquement en JSON."
+        "- NOMMAGE OBLIGATOIRE : sw (jamais facteur_solaire), "
+        "secteur_activite (jamais secteur_d_activite ni secteur_industrie), "
+        "ug pour le vitrage seul, type_serre pour les serres agricoles, "
+        "thermicite pour le niveau thermique des serres.\n"
+        "Reponds uniquement en JSON."
     )
 
     payload = {
-        "model": "claude-sonnet-4-6",
+        "model": "claude-haiku-4-5-20251001",
         "max_tokens": 2048,
         "messages": [{
             "role": "user",
@@ -124,33 +171,44 @@ def _appel_claude_analyse_complete(pdf_bytes, api_key, operation_code, operation
         method='POST',
     )
 
-    empty = {'guide_html': '', 'champs_requis': '', 'formule_cumac_python': '', 'formule_description': ''}
+    empty = {'guide_html': '', 'champs_requis': '', 'champs_eligibilite': '', 'formule_cumac_python': '', 'formule_description': ''}
 
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = json.loads(resp.read().decode('utf-8'))
-        raw = body.get('content', [{}])[0].get('text', '').strip()
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                body = json.loads(resp.read().decode('utf-8'))
+            raw = body.get('content', [{}])[0].get('text', '').strip()
 
-        if raw.startswith('```'):
-            lines = raw.splitlines()
-            raw = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+            if raw.startswith('```'):
+                lines = raw.splitlines()
+                raw = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
 
-        result = json.loads(raw)
-        return {
-            'guide_html': result.get('guide_html', ''),
-            'champs_requis': result.get('champs_requis', ''),
-            'formule_cumac_python': result.get('formule_cumac_python', ''),
-            'formule_description': result.get('formule_description', ''),
-        }
-    except json.JSONDecodeError as e:
-        _logger.error("Claude : réponse JSON invalide — %s\nRaw: %s", e, raw[:500])
-        return empty
-    except urllib.error.HTTPError as e:
-        _logger.error("Claude API erreur %s : %s", e.code, e.read().decode())
-        return empty
-    except Exception as e:
-        _logger.error("Claude API exception : %s", e)
-        return empty
+            result = json.loads(raw)
+            return {
+                'guide_html': result.get('guide_html', ''),
+                'champs_requis': result.get('champs_requis', ''),
+                'champs_eligibilite': result.get('champs_eligibilite', ''),
+                'formule_cumac_python': result.get('formule_cumac_python', ''),
+                'formule_description': result.get('formule_description', ''),
+            }
+        except json.JSONDecodeError as e:
+            raw_preview = locals().get('raw', '')[:500]
+            _logger.error("Claude : réponse JSON invalide — %s\nRaw: %s", e, raw_preview)
+            return empty
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                wait = 65 * (attempt + 1)
+                _logger.warning("Claude API 429 — attente %ds (tentative %d/4)", wait, attempt + 1)
+                time.sleep(wait)
+                continue
+            _logger.error("Claude API erreur %s : %s", e.code, e.read().decode())
+            return empty
+        except Exception as e:
+            _logger.error("Claude API exception : %s", e)
+            return empty
+
+    _logger.error("Claude API : échec après 4 tentatives (429 persistant)")
+    return empty
 
 
 class WizardCee(models.TransientModel):
@@ -194,6 +252,11 @@ class WizardCee(models.TransientModel):
     champs_requis = fields.Char(
         related='operation_cee_id.champs_requis',
         string='Champs requis',
+        readonly=True,
+    )
+    champs_eligibilite = fields.Char(
+        related='operation_cee_id.champs_eligibilite',
+        string="Champs d'eligibilite",
         readonly=True,
     )
     formule_cumac_python = fields.Text(
@@ -261,6 +324,56 @@ class WizardCee(models.TransientModel):
         ('b', 'Classe B (NF EN ISO 52120-1)'),
     ], string='Classe de régulation (ISO 52120-1)')
     notes_techniques = fields.Text(string='Notes complémentaires')
+
+    # ── Champs d'éligibilité ─────────────────────────────────────────────────
+    uw = fields.Float(string='Uw (W/m².K)', digits=(10, 3))
+    sw = fields.Float(string='Sw — Facteur solaire', digits=(10, 3))
+    nb_fenetres = fields.Integer(string='Nombre de fenêtres')
+    type_fenetre = fields.Selection([
+        ('toiture', 'Fenêtre de toiture'),
+        ('double', 'Double fenêtre'),
+        ('autre', 'Fenêtre / porte-fenêtre'),
+    ], string='Type de fenêtre')
+    rendement_saisonnier = fields.Float(string='Rendement saisonnier (%)', digits=(10, 1))
+    label_energie = fields.Char(string='Classe énergétique')
+    type_vmc = fields.Selection([
+        ('naturelle', 'Ventilation naturelle'),
+        ('simple_flux', 'VMC simple flux'),
+        ('double_flux', 'VMC double flux'),
+        ('parietodynamique', 'Vitrage pariétodynamique'),
+        ('vec', 'VEC — Ventilation par extraction centralisée'),
+    ], string='Système de ventilation')
+    surface_capteurs = fields.Float(string='Surface capteurs (m²)', digits=(10, 2))
+    nb_equipements = fields.Integer(string='Nombre d\'equipements')
+    epaisseur_isolant = fields.Float(string='Épaisseur isolant (mm)', digits=(10, 0))
+    volume_ballon = fields.Float(string='Volume ballon (L)', digits=(10, 0))
+    secteur_activite = fields.Selection([
+        ('bureaux', 'Bureaux'),
+        ('enseignement', 'Enseignement'),
+        ('commerces', 'Commerces / Grande distribution'),
+        ('hotellerie', 'Hôtellerie / Restauration'),
+        ('sante', 'Santé / Médico-social'),
+        ('logistique', 'Logistique / Entrepôts'),
+        ('industrie', 'Industrie'),
+        ('agriculture', 'Agriculture'),
+        ('autre', 'Autre'),
+    ], string="Secteur d'activité")
+    ug = fields.Float(string='Ug — Vitrage seul (W/m².K)', digits=(10, 3))
+    type_serre = fields.Selection([
+        ('maraichere', 'Maraîchère'),
+        ('horticole', 'Horticole'),
+    ], string='Type de serre')
+    thermicite = fields.Selection([
+        ('froide', 'Froide (< 12°C)'),
+        ('temperee', 'Tempérée (12-17°C)'),
+        ('chaude', 'Chaude (> 17°C)'),
+    ], string='Thermicité de la serre')
+    delta_t = fields.Float(string='Delta T process (°C)', digits=(10, 1))
+    type_condensation = fields.Selection([
+        ('eau', 'À eau'),
+        ('air', 'À air'),
+    ], string='Type de condensation')
+    mode_fonctionnement = fields.Char(string='Mode de fonctionnement')
 
     # ── Calcul ───────────────────────────────────────────────────────────────
     cumac_cee = fields.Float(string='Cumac retenu (MWhc)', digits=(10, 3))
@@ -368,7 +481,11 @@ class WizardCee(models.TransientModel):
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',
                   'zone_climatique', 'type_logement', 'profil_soutirage',
-                  'efficacite_energetique', 'classe_regulation_iso52120')
+                  'efficacite_energetique', 'classe_regulation_iso52120',
+                  'secteur_activite', 'delta_t', 'type_condensation',
+                  'mode_fonctionnement', 'type_serre', 'thermicite',
+                  'surface_capteurs', 'nb_equipements',
+                  'epaisseur_isolant', 'volume_ballon', 'rendement_saisonnier', 'ug')
     def _onchange_params_techniques(self):
         formule = self.operation_cee_id.formule_cumac_python if self.operation_cee_id else ''
         if not formule:
@@ -388,6 +505,18 @@ class WizardCee(models.TransientModel):
             profil_soutirage=self.profil_soutirage or '',
             efficacite_energetique=self.efficacite_energetique,
             classe_regulation_iso52120=self.classe_regulation_iso52120 or '',
+            secteur_activite=self.secteur_activite or '',
+            delta_t=self.delta_t,
+            type_condensation=self.type_condensation or '',
+            mode_fonctionnement=self.mode_fonctionnement or '',
+            type_serre=self.type_serre or '',
+            thermicite=self.thermicite or '',
+            surface_capteurs=self.surface_capteurs,
+            nb_equipements=self.nb_equipements,
+            epaisseur_isolant=self.epaisseur_isolant,
+            volume_ballon=self.volume_ballon,
+            rendement_saisonnier=self.rendement_saisonnier,
+            ug=self.ug,
         )
 
     # ── Actions ──────────────────────────────────────────────────────────────
@@ -432,6 +561,7 @@ class WizardCee(models.TransientModel):
         op.sudo().write({
             'guide_html': guide,
             'champs_requis': result['champs_requis'],
+            'champs_eligibilite': result['champs_eligibilite'],
             'formule_cumac_python': result['formule_cumac_python'],
             'formule_description': result['formule_description'],
             'formule_analysee': True,
@@ -450,6 +580,21 @@ class WizardCee(models.TransientModel):
                 surface_chauffee=self.surface_chauffee,
                 type_logement=self.type_logement or '',
                 zone_climatique=self.zone_climatique or '',
+                profil_soutirage=self.profil_soutirage or '',
+                efficacite_energetique=self.efficacite_energetique,
+                classe_regulation_iso52120=self.classe_regulation_iso52120 or '',
+                secteur_activite=self.secteur_activite or '',
+                delta_t=self.delta_t,
+                type_condensation=self.type_condensation or '',
+                mode_fonctionnement=self.mode_fonctionnement or '',
+                type_serre=self.type_serre or '',
+                thermicite=self.thermicite or '',
+                surface_capteurs=self.surface_capteurs,
+                nb_equipements=self.nb_equipements,
+                epaisseur_isolant=self.epaisseur_isolant,
+                volume_ballon=self.volume_ballon,
+                rendement_saisonnier=self.rendement_saisonnier,
+                ug=self.ug,
             )
 
         return self._reopen()
@@ -483,6 +628,25 @@ class WizardCee(models.TransientModel):
             'classe_regulateur_cee': self.classe_regulateur or False,
             'classe_regulation_iso52120_cee': self.classe_regulation_iso52120 or False,
             'notes_techniques_cee': self.notes_techniques,
+            # Champs d'éligibilité
+            'uw_cee': self.uw,
+            'sw_cee': self.sw,
+            'nb_fenetres_cee': self.nb_fenetres,
+            'type_fenetre_cee': self.type_fenetre or False,
+            'rendement_saisonnier_cee': self.rendement_saisonnier,
+            'label_energie_cee': self.label_energie,
+            'type_vmc_cee': self.type_vmc or False,
+            'surface_capteurs_cee': self.surface_capteurs,
+            'nb_equipements_cee': self.nb_equipements,
+            'epaisseur_isolant_cee': self.epaisseur_isolant,
+            'volume_ballon_cee': self.volume_ballon,
+            'secteur_activite_cee': self.secteur_activite or False,
+            'ug_cee': self.ug,
+            'type_serre_cee': self.type_serre or False,
+            'thermicite_cee': self.thermicite or False,
+            'delta_t_cee': self.delta_t,
+            'type_condensation_cee': self.type_condensation or False,
+            'mode_fonctionnement_cee': self.mode_fonctionnement,
         })
         self.sale_line_id._calculer_prime_mpr()
         return {'type': 'ir.actions.act_window_close'}
@@ -532,6 +696,48 @@ class WizardCee(models.TransientModel):
             lines.append(f"Énergie remplacée : {labels.get(self.type_energie, self.type_energie)}")
         if self.notes_techniques:
             lines.append(f"Notes : {self.notes_techniques}")
+        if self.uw:
+            lines.append(f"Uw : {self.uw} W/m2.K")
+        if self.sw:
+            lines.append(f"Sw : {self.sw}")
+        if self.nb_fenetres:
+            lines.append(f"Nb fenetres : {self.nb_fenetres}")
+        if self.type_fenetre:
+            labels = dict(self._fields['type_fenetre'].selection)
+            lines.append(f"Type fenetre : {labels.get(self.type_fenetre, self.type_fenetre)}")
+        if self.rendement_saisonnier:
+            lines.append(f"Rendement saisonnier : {self.rendement_saisonnier} %")
+        if self.label_energie:
+            lines.append(f"Classe energetique : {self.label_energie}")
+        if self.type_vmc:
+            labels = dict(self._fields['type_vmc'].selection)
+            lines.append(f"VMC : {labels.get(self.type_vmc, self.type_vmc)}")
+        if self.surface_capteurs:
+            lines.append(f"Surface capteurs : {self.surface_capteurs} m2")
+        if self.nb_equipements:
+            lines.append(f"Nb equipements : {self.nb_equipements}")
+        if self.epaisseur_isolant:
+            lines.append(f"Epaisseur isolant : {self.epaisseur_isolant} mm")
+        if self.volume_ballon:
+            lines.append(f"Volume ballon : {self.volume_ballon} L")
+        if self.secteur_activite:
+            labels = dict(self._fields['secteur_activite'].selection)
+            lines.append(f"Secteur activite : {labels.get(self.secteur_activite, self.secteur_activite)}")
+        if self.ug:
+            lines.append(f"Ug : {self.ug} W/m2.K")
+        if self.type_serre:
+            labels = dict(self._fields['type_serre'].selection)
+            lines.append(f"Type serre : {labels.get(self.type_serre, self.type_serre)}")
+        if self.thermicite:
+            labels = dict(self._fields['thermicite'].selection)
+            lines.append(f"Thermicite : {labels.get(self.thermicite, self.thermicite)}")
+        if self.delta_t:
+            lines.append(f"Delta T : {self.delta_t} C")
+        if self.type_condensation:
+            labels = dict(self._fields['type_condensation'].selection)
+            lines.append(f"Condensation : {labels.get(self.type_condensation, self.type_condensation)}")
+        if self.mode_fonctionnement:
+            lines.append(f"Mode fonctionnement : {self.mode_fonctionnement}")
         return '\n'.join(lines)
 
     def action_ouvrir_produit(self):

@@ -32,6 +32,7 @@ class SaleOrderLine(models.Model):
 
     # Champ non-stocké : ID du wizard BAR-TH-171 à ouvrir (consommé côté JS)
     barth171_wizard_id = fields.Char(store=False, default='')
+    baten111_wizard_id = fields.Char(store=False, default='')
 
     # ── Lien opération CEE (direct — fonctionne sur lignes note ET produit) ──
     operation_cee_id = fields.Many2one(
@@ -95,6 +96,56 @@ class SaleOrderLine(models.Model):
         ('b', 'Classe B (NF EN ISO 52120-1)'),
     ], string='Classe de régulation (ISO 52120-1)')
     notes_techniques_cee = fields.Text(string='Notes complémentaires')
+
+    # ── Champs d'éligibilité persistés ──────────────────────────────────────
+    uw_cee = fields.Float(string='Uw (W/m².K)', digits=(10, 3))
+    sw_cee = fields.Float(string='Sw — Facteur solaire', digits=(10, 3))
+    nb_fenetres_cee = fields.Integer(string='Nombre de fenêtres')
+    type_fenetre_cee = fields.Selection([
+        ('toiture', 'Fenêtre de toiture'),
+        ('double', 'Double fenêtre'),
+        ('autre', 'Fenêtre / porte-fenêtre'),
+    ], string='Type de fenêtre')
+    rendement_saisonnier_cee = fields.Float(string='Rendement saisonnier (%)', digits=(10, 1))
+    label_energie_cee = fields.Char(string='Classe énergétique')
+    type_vmc_cee = fields.Selection([
+        ('naturelle', 'Ventilation naturelle'),
+        ('simple_flux', 'VMC simple flux'),
+        ('double_flux', 'VMC double flux'),
+        ('parietodynamique', 'Vitrage pariétodynamique'),
+        ('vec', 'VEC — Ventilation par extraction centralisée'),
+    ], string='Système de ventilation')
+    surface_capteurs_cee = fields.Float(string='Surface capteurs (m²)', digits=(10, 2))
+    nb_equipements_cee = fields.Integer(string="Nombre d'equipements")
+    epaisseur_isolant_cee = fields.Float(string='Épaisseur isolant (mm)', digits=(10, 0))
+    volume_ballon_cee = fields.Float(string='Volume ballon (L)', digits=(10, 0))
+    secteur_activite_cee = fields.Selection([
+        ('bureaux', 'Bureaux'),
+        ('enseignement', 'Enseignement'),
+        ('commerces', 'Commerces / Grande distribution'),
+        ('hotellerie', 'Hôtellerie / Restauration'),
+        ('sante', 'Santé / Médico-social'),
+        ('logistique', 'Logistique / Entrepôts'),
+        ('industrie', 'Industrie'),
+        ('agriculture', 'Agriculture'),
+        ('autre', 'Autre'),
+    ], string="Secteur d'activité")
+    ug_cee = fields.Float(string='Ug — Vitrage seul (W/m².K)', digits=(10, 3))
+    type_serre_cee = fields.Selection([
+        ('maraichere', 'Maraîchère'),
+        ('horticole', 'Horticole'),
+    ], string='Type de serre')
+    thermicite_cee = fields.Selection([
+        ('froide', 'Froide (< 12°C)'),
+        ('temperee', 'Tempérée (12-17°C)'),
+        ('chaude', 'Chaude (> 17°C)'),
+    ], string='Thermicité de la serre')
+    delta_t_cee = fields.Float(string='Delta T process (°C)', digits=(10, 1))
+    type_condensation_cee = fields.Selection([
+        ('eau', 'À eau'),
+        ('air', 'À air'),
+    ], string='Type de condensation')
+    mode_fonctionnement_cee = fields.Char(string='Mode de fonctionnement')
 
     def _get_next_product_line(self):
         """Retourne la ligne produit ordinaire qui suit immédiatement cette ligne CEE."""
@@ -215,6 +266,35 @@ class SaleOrderLine(models.Model):
         if m:
             result['classe_regulateur'] = m.group(1)
 
+        m = re.search(r'\bUw\s*(?:=\s*|[:·]\s*)([\d]+[,\.][\d]+)\s*W', desc)
+        if m:
+            result['uw'] = float(m.group(1).replace(',', '.'))
+
+        m = re.search(r'\bSw\s*(?:\([^)]*\)\s*)?(?:=\s*|[:·]\s*)([\d]+[,\.][\d]+)', desc)
+        if m:
+            result['sw'] = float(m.group(1).replace(',', '.'))
+
+        if re.search(r'toiture|velux|zonale?|verrière', desc, re.I):
+            result['type_fenetre'] = 'toiture'
+        elif re.search(r'double\s*(?:vitrage|vantaux?|ouvrant)', desc, re.I):
+            result['type_fenetre'] = 'double'
+
+        m = re.search(r'[Ee]paisseur\s*(?:de\s*(?:l[’\'])?isolant)?\s*[:·=]\s*([\d]+[,\.]?[\d]*)\s*mm', desc)
+        if m:
+            result['epaisseur_isolant'] = float(m.group(1).replace(',', '.'))
+
+        m = re.search(r'[Vv]olume\s*(?:du\s*)?ballon\s*[:·=]\s*([\d]+[,\.]?[\d]*)\s*[lL]', desc)
+        if m:
+            result['volume_ballon'] = float(m.group(1).replace(',', '.'))
+
+        m = re.search(r'[Ss]urface\s*(?:des\s*)?capteurs?\s*(?:solaires?\s*)?[:·=]\s*([\d]+[,\.]?[\d]*)\s*m', desc)
+        if m:
+            result['surface_capteurs'] = float(m.group(1).replace(',', '.'))
+
+        m = re.search(r'[Rr]endement\s*saisonnier\s*[:·=]\s*([\d]+[,\.]?[\d]*)\s*%', desc)
+        if m:
+            result['rendement_saisonnier'] = float(m.group(1).replace(',', '.'))
+
         return result
 
     # Libellés lisibles pour les champs produit manquants
@@ -229,12 +309,21 @@ class SaleOrderLine(models.Model):
         'usage_pac': 'Usage PAC (chauffage / + ECS)',
         'classe_regulateur': 'Classe du régulateur',
         'classe_regulation_iso52120': 'Classe de régulation ISO 52120-1 (A ou B)',
+        'uw': 'Uw — Coefficient thermique (W/m².K)',
+        'sw': 'Sw — Facteur solaire',
+        'type_fenetre': 'Type de fenêtre',
+        'epaisseur_isolant': 'Épaisseur isolant (mm)',
+        'volume_ballon': 'Volume ballon (L)',
+        'surface_capteurs': 'Surface capteurs solaires (m²)',
+        'rendement_saisonnier': 'Rendement saisonnier (%)',
     }
 
     def _champs_produit_requis(self):
         """Retourne la liste des champs produit attendus pour cette opération."""
         op = self.operation_cee_id
         champs_requis = (op.champs_requis or '') if op else ''
+        champs_elig = (op.champs_eligibilite or '') if op else ''
+        tout = champs_requis + ',' + champs_elig
         requis = ['marque', 'modele']
         if 'etas' in champs_requis:
             requis.append('etas')
@@ -246,6 +335,20 @@ class SaleOrderLine(models.Model):
             requis.extend(['type_application_pac', 'usage_pac', 'classe_regulateur'])
         if op and op.code == 'BAR-TH-173':
             requis.extend(['surface_chauffee', 'type_logement', 'classe_regulation_iso52120'])
+        if 'uw' in tout:
+            requis.append('uw')
+        if 'sw' in tout:
+            requis.append('sw')
+        if 'type_fenetre' in tout:
+            requis.append('type_fenetre')
+        if 'epaisseur_isolant' in tout:
+            requis.append('epaisseur_isolant')
+        if 'volume_ballon' in tout:
+            requis.append('volume_ballon')
+        if 'surface_capteurs' in tout:
+            requis.append('surface_capteurs')
+        if 'rendement_saisonnier' in tout:
+            requis.append('rendement_saisonnier')
         return requis
 
     def _extraire_donnees_produit_ia(self, product_line, api_key):
@@ -264,7 +367,7 @@ class SaleOrderLine(models.Model):
             return {}, self._champs_produit_requis()
 
         prompt = (
-            "Tu es un expert en equipements CEE (chauffage, regulation, isolation). "
+            "Tu es un expert en equipements CEE (chauffage, regulation, isolation, fenetres). "
             "Extrait les donnees techniques du descriptif produit suivant.\n\n"
             f"Descriptif :\n{desc}\n\n"
             "Retourne UNIQUEMENT un JSON valide avec ces cles (null si non trouve) :\n"
@@ -278,7 +381,14 @@ class SaleOrderLine(models.Model):
             '  "type_application_pac": "basse_temperature" ou "haute_temperature" ou null,\n'
             '  "usage_pac": "chauffage" ou "chauffage_ecs" ou null,\n'
             '  "classe_regulateur": "IV" ou "V" ou "VI" ou "VII" ou "VIII" ou null,\n'
-            '  "classe_regulation_iso52120": "a" ou "b" ou null\n'
+            '  "classe_regulation_iso52120": "a" ou "b" ou null,\n'
+            '  "uw": decimal (W/m2.K) ou null,\n'
+            '  "sw": decimal (0 a 1) ou null,\n'
+            '  "type_fenetre": "toiture" ou "double" ou "autre" ou null,\n'
+            '  "epaisseur_isolant": decimal (mm) ou null,\n'
+            '  "volume_ballon": decimal (litres) ou null,\n'
+            '  "surface_capteurs": decimal (m2) ou null,\n'
+            '  "rendement_saisonnier": decimal (%) ou null\n'
             '}\n\n'
             "Regles d'extraction :\n"
             "- etas : rendement saisonnier en chauffage (note ηs ou ETAS), a 35°C si disponible,"
@@ -289,10 +399,17 @@ class SaleOrderLine(models.Model):
             "- classe_regulateur : chiffre romain IV a VIII, chercher 'Classe du regulateur'\n"
             "- classe_regulation_iso52120 : classe de regulation NF EN ISO 52120-1 ;"
             " retourner 'a' si Classe A, 'b' si Classe B\n"
-            "- marque : fabricant (ex: Mitsubishi, Atlantic, Netatmo, Delta Dore...)\n"
+            "- marque : fabricant (ex: Mitsubishi, Atlantic, Janneau, Velux...)\n"
             "- modele : reference commerciale principale de l'equipement\n"
             "- cop : COP nominal (A7/W35), nombre decimal\n"
             "- scop : SCOP a 35°C, nombre decimal\n"
+            "- uw : coefficient de transmission thermique de la fenetre en W/m2.K (chercher Uw =)\n"
+            "- sw : facteur solaire (chercher Sw = ou facteur solaire)\n"
+            "- type_fenetre : toiture si velux/verriere/lucarne, double si fenetre standard 2 vantaux, autre sinon\n"
+            "- epaisseur_isolant : epaisseur en mm (chercher mm apres epaisseur)\n"
+            "- volume_ballon : volume en litres (chercher L ou litres apres volume)\n"
+            "- surface_capteurs : surface en m2 des capteurs solaires thermiques\n"
+            "- rendement_saisonnier : rendement saisonnier en % pour chaudiere ou VMC\n"
             "Reponds uniquement en JSON, sans markdown, sans commentaire."
         )
 
@@ -326,7 +443,9 @@ class SaleOrderLine(models.Model):
             result = {}
             for key in ('marque', 'modele', 'etas', 'puissance_kw', 'cop', 'scop',
                         'type_application_pac', 'usage_pac', 'classe_regulateur',
-                        'classe_regulation_iso52120'):
+                        'classe_regulation_iso52120', 'uw', 'sw', 'type_fenetre',
+                        'epaisseur_isolant', 'volume_ballon', 'surface_capteurs',
+                        'rendement_saisonnier'):
                 val = extracted.get(key)
                 if val is not None:
                     # Normalise la classe ISO 52120 en minuscule ('A'/'B' → 'a'/'b')
@@ -401,6 +520,18 @@ class SaleOrderLine(models.Model):
                 profil_soutirage=self.profil_soutirage_cee or '',
                 efficacite_energetique=self.efficacite_energetique_cee,
                 classe_regulation_iso52120=self.classe_regulation_iso52120_cee or '',
+                secteur_activite=self.secteur_activite_cee or '',
+                delta_t=self.delta_t_cee,
+                type_condensation=self.type_condensation_cee or '',
+                mode_fonctionnement=self.mode_fonctionnement_cee or '',
+                type_serre=self.type_serre_cee or '',
+                thermicite=self.thermicite_cee or '',
+                surface_capteurs=self.surface_capteurs_cee,
+                nb_equipements=self.nb_equipements_cee,
+                epaisseur_isolant=self.epaisseur_isolant_cee,
+                volume_ballon=self.volume_ballon_cee,
+                rendement_saisonnier=self.rendement_saisonnier_cee,
+                ug=self.ug_cee,
             )
 
         # ── Guide technique déjà analysé ? ──────────────────────────────────
@@ -432,6 +563,25 @@ class SaleOrderLine(models.Model):
             'classe_regulateur': self.classe_regulateur_cee or False,
             'classe_regulation_iso52120': self.classe_regulation_iso52120_cee or False,
             'notes_techniques': self.notes_techniques_cee or '',
+            # Champs d'éligibilité
+            'uw': self.uw_cee,
+            'sw': self.sw_cee,
+            'nb_fenetres': self.nb_fenetres_cee,
+            'type_fenetre': self.type_fenetre_cee or False,
+            'rendement_saisonnier': self.rendement_saisonnier_cee,
+            'label_energie': self.label_energie_cee or '',
+            'type_vmc': self.type_vmc_cee or False,
+            'surface_capteurs': self.surface_capteurs_cee,
+            'nb_equipements': self.nb_equipements_cee,
+            'epaisseur_isolant': self.epaisseur_isolant_cee,
+            'volume_ballon': self.volume_ballon_cee,
+            'secteur_activite': self.secteur_activite_cee or False,
+            'ug': self.ug_cee,
+            'type_serre': self.type_serre_cee or False,
+            'thermicite': self.thermicite_cee or False,
+            'delta_t': self.delta_t_cee,
+            'type_condensation': self.type_condensation_cee or False,
+            'mode_fonctionnement': self.mode_fonctionnement_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,
         }
@@ -484,24 +634,32 @@ class SaleOrderLine(models.Model):
     @api.onchange('product_id')
     def _onchange_product_barth171_popup(self):
         self.barth171_wizard_id = ''
+        self.baten111_wizard_id = ''
         if not self.product_id:
             self.operation_cee_id = False
             return
         # Synchronise operation_cee_id depuis le produit (lignes produit)
         self.operation_cee_id = self.product_id.product_tmpl_id.operation_cee_id
         op = self.operation_cee_id
-        if not op or op.code != 'BAR-TH-171':
-            return
-        if self.surface_chauffee_cee and self.type_logement_cee:
-            return
         order_id = self.order_id._origin.id or self.order_id.id
         if not order_id:
             return
-        wizard = self.env['ibatix.wizard.barth171'].create({
-            'order_id': order_id,
-            'product_id': self.product_id.id,
-        })
-        self.barth171_wizard_id = str(wizard.id)
+
+        if op and op.code == 'BAR-TH-171':
+            if not (self.surface_chauffee_cee and self.type_logement_cee):
+                wizard = self.env['ibatix.wizard.barth171'].create({
+                    'order_id': order_id,
+                    'product_id': self.product_id.id,
+                })
+                self.barth171_wizard_id = str(wizard.id)
+
+        elif op and op.code == 'BAT-EN-111':
+            if not (self.type_vmc_cee and self.secteur_activite_cee):
+                wizard = self.env['ibatix.wizard.baten111'].create({
+                    'order_id': order_id,
+                    'product_id': self.product_id.id,
+                })
+                self.baten111_wizard_id = str(wizard.id)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -522,6 +680,20 @@ class SaleOrderLine(models.Model):
                     'barth171_type_pending': '',
                     'barth171_energie_pending': '',
                     'barth171_product_pending': 0,
+                })
+
+            if (rec.operation_cee_id and rec.operation_cee_id.code == 'BAT-EN-111'
+                    and not rec.type_vmc_cee
+                    and order.baten111_product_pending == rec.product_id.id
+                    and order.baten111_type_vmc_pending):
+                rec.write({
+                    'type_vmc_cee': order.baten111_type_vmc_pending,
+                    'secteur_activite_cee': order.baten111_secteur_activite_pending or False,
+                })
+                order.write({
+                    'baten111_type_vmc_pending': '',
+                    'baten111_secteur_activite_pending': '',
+                    'baten111_product_pending': 0,
                 })
         return records
 

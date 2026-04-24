@@ -43,6 +43,7 @@
             <xpath expr="//field[@name='order_line']/list/field[@name='price_subtotal'][1]" position="after">
                 <field name="operation_cee_id" column_invisible="1"/>
                 <field name="barth171_wizard_id" column_invisible="1"/>
+                <field name="baten111_wizard_id" column_invisible="1"/>
                 <field name="prime_mpr" column_invisible="1"/>
                 <field name="prime_mpr_ecrete" column_invisible="1"/>
             </xpath>

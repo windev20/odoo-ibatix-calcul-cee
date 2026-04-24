@@ -23,6 +23,7 @@
         'views/wizard_cee_views.xml',
         'views/wizard_cee_manquants_views.xml',
         'views/wizard_barth171_views.xml',
+        'views/wizard_baten111_views.xml',
         'views/wizard_select_operation_views.xml',
         'views/wizard_cee_simple_views.xml',
     ],

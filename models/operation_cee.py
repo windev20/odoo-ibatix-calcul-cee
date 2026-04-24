@@ -30,6 +30,10 @@ class IbatixOperationCee(models.Model):
         sanitize=False,
         help="Guide généré par l'IA à partir de la fiche PDF.",
     )
+    champs_eligibilite = fields.Char(
+        string="Champs d'eligibilite",
+        help="Variables d'eligibilite separees par virgule : uw,sw,nb_fenetres,...",
+    )
 
     @api.onchange('fiche_pdf')
     def _onchange_fiche_pdf(self):
@@ -38,6 +42,7 @@ class IbatixOperationCee(models.Model):
             self.formule_analysee = False
             self.guide_html = False
             self.champs_requis = False
+            self.champs_eligibilite = False
             self.formule_cumac_python = False
             self.formule_description = False
             return {'warning': {
@@ -82,6 +87,7 @@ class IbatixOperationCee(models.Model):
         self.write({
             'guide_html': guide,
             'champs_requis': result.get('champs_requis', ''),
+            'champs_eligibilite': result.get('champs_eligibilite', ''),
             'formule_cumac_python': formule,
             'formule_description': result.get('formule_description', ''),
             'formule_analysee': True,
@@ -108,6 +114,7 @@ class IbatixOperationCee(models.Model):
             'formule_analysee': False,
             'guide_html': False,
             'champs_requis': False,
+            'champs_eligibilite': False,
             'formule_cumac_python': False,
             'formule_description': False,
         })
