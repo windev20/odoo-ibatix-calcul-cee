@@ -8,9 +8,6 @@ const WIZARD_BARTH171 = "ibatix.wizard.barth171";
 const WIZARD_MODELS   = new Set([WIZARD_SELECT, WIZARD_BARTH171]);
 
 function fixRadioTabindex(modal) {
-    // Le composant Field ajoute tabindex sur le wrapper .o_field_radio
-    // ce qui fait que Tab atterrit sur le div, pas sur les <input type=radio>.
-    // On exclut le wrapper et on rend tabbable uniquement le radio coché (ou le premier).
     modal.querySelectorAll(".o_field_radio").forEach((wrapper) => {
         wrapper.setAttribute("tabindex", "-1");
         const radios = [...wrapper.querySelectorAll("input[type=radio]")];
@@ -30,6 +27,7 @@ patch(FormController.prototype, {
                 const model = this.props.resModel;
                 if (!WIZARD_MODELS.has(model)) return () => {};
 
+                // ── Délai 200ms : attendre le rendu complet du formulaire ─
                 setTimeout(() => {
                     const modal = document.querySelector(".modal");
                     if (!modal) return;
@@ -40,11 +38,32 @@ patch(FormController.prototype, {
                         : modal.querySelector(".o_field_float input, input[type=number]");
                     if (firstInput) firstInput.focus();
 
-                    // Correction des tabindex radio
+                    // Correction tabindex pour les groupes radio (si widget=radio)
                     fixRadioTabindex(modal);
 
-                    // Quand l'utilisateur change de radio via les flèches,
-                    // mettre à jour quel radio est tabbable pour le prochain Tab.
+                    // ── Auto-ouverture du SelectMenu Odoo 19 lors du Tab ──
+                    // SelectMenu ne s'ouvre pas au focus — il faut un clic.
+                    // On détecte que le dernier touch clavier était Tab, puis
+                    // on clique l'input toggler pour propager au Dropdown.
+                    let tabPressed = false;
+
+                    modal.addEventListener("keydown", (ev) => {
+                        tabPressed = ev.key === "Tab" && !ev.shiftKey;
+                    }, true);
+
+                    modal.addEventListener("focusin", (ev) => {
+                        if (!tabPressed) return;
+                        tabPressed = false;
+                        const el = ev.target;
+                        // L'input du SelectMenu a la classe o_select_menu_input
+                        if (!el.classList.contains("o_select_menu_input")) return;
+                        // S'assurer qu'on est sur un champ Selection dans ce modal
+                        if (!el.closest(".o_field_selection")) return;
+                        // Déclencher l'ouverture via click (propagé au Dropdown parent)
+                        setTimeout(() => el.click(), 0);
+                    });
+
+                    // Mise à jour tabindex après sélection d'un radio
                     modal.addEventListener("change", (ev) => {
                         if (ev.target.type !== "radio") return;
                         const wrapper = ev.target.closest(".o_field_radio");
@@ -53,9 +72,9 @@ patch(FormController.prototype, {
                             .forEach((r) => r.setAttribute("tabindex", "-1"));
                         ev.target.setAttribute("tabindex", "0");
                     });
-                }, 80);
+                }, 200);
 
-                // Enter → valider quand aucun dropdown n'est ouvert
+                // ── Enter → valider (hors dropdown ouvert) ───────────────
                 const onKeydown = (ev) => {
                     if (ev.key !== "Enter") return;
                     if (document.querySelector(".o-autocomplete--dropdown-menu, .o-dropdown--menu")) return;
