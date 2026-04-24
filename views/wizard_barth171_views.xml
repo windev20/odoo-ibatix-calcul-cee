@@ -12,9 +12,9 @@
                     Veuillez renseigner les paramètres nécessaires au calcul de la prime CEE.
                 </div>
                 <group>
-                    <field name="surface_chauffee" autofocus="1"/>
-                    <field name="type_logement"/>
-                    <field name="type_energie"/>
+                    <field name="surface_chauffee"/>
+                    <field name="type_logement" widget="radio"/>
+                    <field name="type_energie" widget="radio"/>
                 </group>
                 <footer>
                     <button name="action_confirm"
