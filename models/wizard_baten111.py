@@ -16,7 +16,7 @@ class WizardBatEn111(models.TransientModel):
         ('double_flux', 'VMC double flux'),
         ('parietodynamique', 'Vitrage pariétodynamique'),
         ('vec', 'VEC — Ventilation par extraction centralisée'),
-    ], string='Système de ventilation dans les locaux', required=True)
+    ], string='Système de ventilation dans les locaux')
 
     secteur_activite = fields.Selection([
         ('bureaux', 'Bureaux'),
@@ -28,7 +28,7 @@ class WizardBatEn111(models.TransientModel):
         ('industrie', 'Industrie'),
         ('agriculture', 'Agriculture'),
         ('autre', 'Autre'),
-    ], string="Secteur d'activité du bâtiment", required=True)
+    ], string="Secteur d'activité du bâtiment")
 
     def action_confirm(self):
         self.ensure_one()
