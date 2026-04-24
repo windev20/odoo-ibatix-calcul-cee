@@ -61,12 +61,33 @@ patch(FormController.prototype, {
                     });
                 };
 
-                // ── Enter → valider (hors dropdown ouvert) ─────────────────
+                // ── Enter → avancer champ par champ (WIZARD_SIMPLE) ou valider ─
                 const onKeydown = (ev) => {
                     if (ev.key === "Tab" && !ev.shiftKey) { onTab(ev); return; }
                     if (ev.key !== "Enter") return;
                     if (document.querySelector(".o-autocomplete--dropdown-menu, .o-dropdown--menu")) return;
-                    const btn = document.querySelector(".modal .modal-footer .btn-primary");
+
+                    const modal = document.querySelector(".modal");
+                    if (!modal) return;
+
+                    if (model === WIZARD_SIMPLE) {
+                        const focused = document.activeElement;
+                        const fields = [
+                            modal.querySelector(".o_field_float input, input[type=number]"),
+                            ...Array.from(modal.querySelectorAll(".o_field_selection .o_select_menu_input")),
+                        ].filter(Boolean);
+                        const idx = fields.indexOf(focused);
+                        if (idx >= 0 && idx < fields.length - 1) {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            const next = fields[idx + 1];
+                            next.focus();
+                            next.click();
+                            return;
+                        }
+                    }
+
+                    const btn = modal.querySelector(".modal-footer .btn-primary");
                     if (btn) {
                         ev.preventDefault();
                         ev.stopPropagation();
