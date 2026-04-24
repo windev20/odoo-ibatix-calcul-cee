@@ -14,6 +14,7 @@
         'web.assets_backend': [
             'ibatix_calcul_cee/static/src/js/cee_autosave.js',
             'ibatix_calcul_cee/static/src/js/barth171_popup.js',
+            'ibatix_calcul_cee/static/src/js/wizard_cee_ux.js',
         ],
     },
     'data': [
