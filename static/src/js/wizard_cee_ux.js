@@ -23,8 +23,8 @@ patch(FormController.prototype, {
                 // Enter → valider le wizard quand le dropdown est fermé
                 const onKeydown = (ev) => {
                     if (ev.key !== "Enter") return;
-                    // Laisser le dropdown gérer son propre Enter (sélection d'option)
-                    if (document.querySelector(".o-dropdown--menu")) return;
+                    // Many2one Odoo 17-19 utilise o-autocomplete--dropdown-menu
+                    if (document.querySelector(".o-autocomplete--dropdown-menu, .o-dropdown--menu")) return;
                     const btn = document.querySelector(".modal .modal-footer .btn-primary");
                     if (btn) {
                         ev.preventDefault();
