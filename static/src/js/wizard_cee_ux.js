@@ -7,17 +7,6 @@ const WIZARD_SELECT   = "ibatix.wizard.select.operation.cee";
 const WIZARD_BARTH171 = "ibatix.wizard.barth171";
 const WIZARD_MODELS   = new Set([WIZARD_SELECT, WIZARD_BARTH171]);
 
-function fixRadioTabindex(modal) {
-    modal.querySelectorAll(".o_field_radio").forEach((wrapper) => {
-        wrapper.setAttribute("tabindex", "-1");
-        const radios = [...wrapper.querySelectorAll("input[type=radio]")];
-        if (!radios.length) return;
-        radios.forEach((r) => r.setAttribute("tabindex", "-1"));
-        const tabbable = radios.find((r) => r.checked) || radios[0];
-        tabbable.setAttribute("tabindex", "0");
-    });
-}
-
 patch(FormController.prototype, {
     setup() {
         super.setup(...arguments);
@@ -27,55 +16,54 @@ patch(FormController.prototype, {
                 const model = this.props.resModel;
                 if (!WIZARD_MODELS.has(model)) return () => {};
 
-                // ── Délai 200ms : attendre le rendu complet du formulaire ─
-                setTimeout(() => {
+                // Auto-focus sur le premier champ au montage
+                // On attend que le modal et ses champs soient dans le DOM
+                let attempts = 0;
+                const tryFocus = setInterval(() => {
                     const modal = document.querySelector(".modal");
-                    if (!modal) return;
+                    const target = model === WIZARD_SELECT
+                        ? modal?.querySelector(".o_field_many2one input")
+                        : modal?.querySelector(".o_field_float input, input[type=number]");
+                    if (target) {
+                        target.focus();
+                        clearInterval(tryFocus);
+                    } else if (++attempts > 30) {
+                        clearInterval(tryFocus);
+                    }
+                }, 80);
 
-                    // Auto-focus sur le premier champ saisissable
-                    const firstInput = model === WIZARD_SELECT
-                        ? modal.querySelector(".o_field_many2one input")
-                        : modal.querySelector(".o_field_float input, input[type=number]");
-                    if (firstInput) firstInput.focus();
+                // ── Gestion Tab : rediriger vers le bon élément ─────────────
+                // On utilise requestAnimationFrame APRÈS le déplacement du focus
+                // pour ne pas manipuler tabindex (que OWL écrase au re-render).
+                const onTab = (ev) => {
+                    if (ev.key !== "Tab" || ev.shiftKey) return;
+                    requestAnimationFrame(() => {
+                        const focused = document.activeElement;
+                        if (!focused || !focused.closest(".modal")) return;
 
-                    // Correction tabindex pour les groupes radio (si widget=radio)
-                    fixRadioTabindex(modal);
+                        // Cas 1 : Tab atterrit sur le wrapper .o_field_radio
+                        // → rediriger vers le radio coché ou le premier
+                        if (focused.classList.contains("o_field_radio")) {
+                            const dest =
+                                focused.querySelector("input[type=radio]:checked") ||
+                                focused.querySelector("input[type=radio]");
+                            if (dest) { dest.focus(); return; }
+                        }
 
-                    // ── Auto-ouverture du SelectMenu Odoo 19 lors du Tab ──
-                    // SelectMenu ne s'ouvre pas au focus — il faut un clic.
-                    // On détecte que le dernier touch clavier était Tab, puis
-                    // on clique l'input toggler pour propager au Dropdown.
-                    let tabPressed = false;
-
-                    modal.addEventListener("keydown", (ev) => {
-                        tabPressed = ev.key === "Tab" && !ev.shiftKey;
-                    }, true);
-
-                    modal.addEventListener("focusin", (ev) => {
-                        if (!tabPressed) return;
-                        tabPressed = false;
-                        const el = ev.target;
-                        // L'input du SelectMenu a la classe o_select_menu_input
-                        if (!el.classList.contains("o_select_menu_input")) return;
-                        // S'assurer qu'on est sur un champ Selection dans ce modal
-                        if (!el.closest(".o_field_selection")) return;
-                        // Déclencher l'ouverture via click (propagé au Dropdown parent)
-                        setTimeout(() => el.click(), 0);
+                        // Cas 2 : Tab atterrit sur l'input du SelectMenu
+                        // → simuler un clic pour ouvrir le dropdown immédiatement
+                        if (
+                            focused.classList.contains("o_select_menu_input") &&
+                            focused.closest(".o_field_selection")
+                        ) {
+                            focused.click();
+                        }
                     });
+                };
 
-                    // Mise à jour tabindex après sélection d'un radio
-                    modal.addEventListener("change", (ev) => {
-                        if (ev.target.type !== "radio") return;
-                        const wrapper = ev.target.closest(".o_field_radio");
-                        if (!wrapper) return;
-                        [...wrapper.querySelectorAll("input[type=radio]")]
-                            .forEach((r) => r.setAttribute("tabindex", "-1"));
-                        ev.target.setAttribute("tabindex", "0");
-                    });
-                }, 200);
-
-                // ── Enter → valider (hors dropdown ouvert) ───────────────
+                // ── Enter → valider (hors dropdown ouvert) ─────────────────
                 const onKeydown = (ev) => {
+                    if (ev.key === "Tab" && !ev.shiftKey) { onTab(ev); return; }
                     if (ev.key !== "Enter") return;
                     if (document.querySelector(".o-autocomplete--dropdown-menu, .o-dropdown--menu")) return;
                     const btn = document.querySelector(".modal .modal-footer .btn-primary");
@@ -86,7 +74,11 @@ patch(FormController.prototype, {
                     }
                 };
                 document.addEventListener("keydown", onKeydown, true);
-                return () => document.removeEventListener("keydown", onKeydown, true);
+
+                return () => {
+                    clearInterval(tryFocus);
+                    document.removeEventListener("keydown", onKeydown, true);
+                };
             },
             () => []
         );
