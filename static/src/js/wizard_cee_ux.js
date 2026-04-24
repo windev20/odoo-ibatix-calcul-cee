@@ -3,9 +3,9 @@ import { patch } from "@web/core/utils/patch";
 import { FormController } from "@web/views/form/form_controller";
 import { useEffect } from "@odoo/owl";
 
-const WIZARD_SELECT   = "ibatix.wizard.select.operation.cee";
-const WIZARD_BARTH171 = "ibatix.wizard.barth171";
-const WIZARD_MODELS   = new Set([WIZARD_SELECT, WIZARD_BARTH171]);
+const WIZARD_SELECT = "ibatix.wizard.select.operation.cee";
+const WIZARD_SIMPLE = "ibatix.wizard.cee.simple";
+const WIZARD_MODELS = new Set([WIZARD_SELECT, WIZARD_SIMPLE]);
 
 patch(FormController.prototype, {
     setup() {
