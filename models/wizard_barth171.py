@@ -16,14 +16,14 @@ class WizardBarTh171(models.TransientModel):
     type_logement = fields.Selection([
         ('maison', 'Maison individuelle'),
         ('appartement', 'Appartement'),
-    ], string='Type de logement')
+    ], string='Type de logement', default='maison')
     type_energie = fields.Selection([
         ('electricite', 'Électricité'),
         ('gaz', 'Gaz naturel'),
         ('fioul', 'Fioul'),
         ('bois', 'Bois / Biomasse'),
         ('autre', 'Autre'),
-    ], string='Énergie de chauffage avant travaux')
+    ], string='Énergie de chauffage avant travaux', default='gaz')
 
     def action_confirm(self):
         self.ensure_one()
