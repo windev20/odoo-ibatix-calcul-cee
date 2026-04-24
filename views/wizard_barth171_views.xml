@@ -13,8 +13,8 @@
                 </div>
                 <group>
                     <field name="surface_chauffee"/>
-                    <field name="type_logement" widget="radio"/>
-                    <field name="type_energie" widget="radio"/>
+                    <field name="type_logement"/>
+                    <field name="type_energie"/>
                 </group>
                 <footer>
                     <button name="action_confirm"
