@@ -362,9 +362,7 @@ class SaleOrder(models.Model):
         if not self.env.context.get('_cee_auto_calc'):
             for order in self.with_context(_cee_auto_calc=True):
                 if order.order_line.filtered(
-                    lambda l: l.display_type == 'line_cee'
-                    and l.operation_cee_id
-                    and not l.prime_cee
+                    lambda l: l.display_type == 'line_cee' and l.operation_cee_id
                 ):
                     order._auto_enregistrer_primes_manquantes()
         return result
@@ -412,7 +410,7 @@ class SaleOrder(models.Model):
         )
 
         for line in self.order_line.filtered(
-            lambda l: l.display_type == 'line_cee' and l.operation_cee_id and not l.prime_cee
+            lambda l: l.display_type == 'line_cee' and l.operation_cee_id
         ):
             op = line.operation_cee_id
             formule = op.formule_cumac_python
