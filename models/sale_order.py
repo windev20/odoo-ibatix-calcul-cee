@@ -363,14 +363,41 @@ class SaleOrder(models.Model):
             order._auto_enregistrer_primes_manquantes()
         return super().action_confirm()
 
-    def _auto_enregistrer_primes_manquantes(self):
-        """Recalcule la prime CEE pour toute ligne opération dont prime_cee == 0
-        mais dont la formule et les données techniques sont disponibles."""
-        from .wizard_cee import _evaluer_cumac
+    # Correspondance champ extrait du produit → champ stocké sur sale.order.line
+    _EXTRACT_TO_LINE = {
+        'marque':                   'marque_cee',
+        'modele':                   'modele_cee',
+        'cop':                      'cop_cee',
+        'scop':                     'scop_cee',
+        'etas':                     'etas_cee',
+        'puissance_kw':             'puissance_kw_cee',
+        'resistance_thermique':     'resistance_thermique_cee',
+        'surface_m2':               'surface_m2_cee',
+        'efficacite_energetique':   'efficacite_energetique_cee',
+        'type_application_pac':     'type_application_pac_cee',
+        'usage_pac':                'usage_pac_cee',
+        'classe_regulateur':        'classe_regulateur_cee',
+        'classe_regulation_iso52120': 'classe_regulation_iso52120_cee',
+        'uw':                       'uw_cee',
+        'sw':                       'sw_cee',
+        'type_fenetre':             'type_fenetre_cee',
+        'epaisseur_isolant':        'epaisseur_isolant_cee',
+        'volume_ballon':            'volume_ballon_cee',
+        'surface_capteurs':         'surface_capteurs_cee',
+        'rendement_saisonnier':     'rendement_saisonnier_cee',
+    }
 
-        delegataire = self.delegataire_cee_id
+    def _auto_enregistrer_primes_manquantes(self):
+        """Recalcule et enregistre les primes CEE/MPR pour les lignes à prime_cee == 0.
+        Reproduit la logique du wizard : extraction depuis le produit + dérivation zone."""
+        from .wizard_cee import _evaluer_cumac
+        from .sale_order_line import _zone_from_zip
+
         contrat = self.contrat_cee_id
         categorie = self.partner_id.categorie_precarite
+        api_key = self.env['ir.config_parameter'].sudo().get_param(
+            'ibatix.anthropic_api_key', ''
+        )
 
         for line in self.order_line.filtered(
             lambda l: l.display_type == 'line_cee' and l.operation_cee_id and not l.prime_cee
@@ -380,7 +407,7 @@ class SaleOrder(models.Model):
             if not formule:
                 continue
 
-            # Valorisation : priorité ligne > contrat
+            # ── Valorisation ──────────────────────────────────────────────────
             valo = line.valo_cee
             if not valo and contrat:
                 valo = (
@@ -391,42 +418,78 @@ class SaleOrder(models.Model):
             if not valo:
                 continue
 
+            # ── Extraction depuis le produit suivant ─────────────────────────
+            next_line = line._get_next_product_line()
+            if next_line:
+                if api_key:
+                    extracted, _ = line._extraire_donnees_produit_ia(next_line, api_key)
+                else:
+                    extracted = line._extraire_donnees_produit(next_line)
+            else:
+                extracted = {}
+
+            # Fusionner : valeur stockée sur la ligne > valeur extraite du produit
+            params = {}
+            for key, line_field in self._EXTRACT_TO_LINE.items():
+                stored = getattr(line, line_field, None)
+                params[key] = stored if stored else extracted.get(key) or 0
+
+            # ── Zone climatique ───────────────────────────────────────────────
+            zone = line.zone_climatique_cee or _zone_from_zip(
+                self.partner_id.zip or ''
+            ) or ''
+
+            # ── Surface ───────────────────────────────────────────────────────
+            surface = (
+                line.surface_m2_cee
+                or params.get('surface_m2')
+                or (next_line.product_uom_qty if next_line else 0.0)
+            )
+
+            # ── Calcul Cumac ──────────────────────────────────────────────────
             cumac = _evaluer_cumac(
                 formule,
-                surface_m2=line.surface_m2_cee,
+                surface_m2=surface,
                 surface_chauffee=line.surface_chauffee_cee,
-                resistance_thermique=line.resistance_thermique_cee,
-                puissance_kw=line.puissance_kw_cee,
-                cop=line.cop_cee,
-                scop=line.scop_cee,
-                etas=line.etas_cee,
+                resistance_thermique=params.get('resistance_thermique') or 0,
+                puissance_kw=params.get('puissance_kw') or 0,
+                cop=params.get('cop') or 0,
+                scop=params.get('scop') or 0,
+                etas=params.get('etas') or 0,
                 nb_logements=line.nb_logements_cee,
                 type_logement=line.type_logement_cee or '',
-                zone_climatique=line.zone_climatique_cee or '',
+                zone_climatique=zone,
                 profil_soutirage=line.profil_soutirage_cee or '',
-                efficacite_energetique=line.efficacite_energetique_cee,
-                classe_regulation_iso52120=line.classe_regulation_iso52120_cee or '',
+                efficacite_energetique=params.get('efficacite_energetique') or 0,
+                classe_regulation_iso52120=params.get('classe_regulation_iso52120') or '',
                 secteur_activite=line.secteur_activite_cee or '',
                 delta_t=line.delta_t_cee,
                 type_condensation=line.type_condensation_cee or '',
                 mode_fonctionnement=line.mode_fonctionnement_cee or '',
                 type_serre=line.type_serre_cee or '',
                 thermicite=line.thermicite_cee or '',
-                surface_capteurs=line.surface_capteurs_cee,
+                surface_capteurs=params.get('surface_capteurs') or 0,
                 nb_equipements=line.nb_equipements_cee,
-                epaisseur_isolant=line.epaisseur_isolant_cee,
-                volume_ballon=line.volume_ballon_cee,
-                rendement_saisonnier=line.rendement_saisonnier_cee,
+                epaisseur_isolant=params.get('epaisseur_isolant') or 0,
+                volume_ballon=params.get('volume_ballon') or 0,
+                rendement_saisonnier=params.get('rendement_saisonnier') or 0,
                 ug=line.ug_cee,
             )
-
             if not cumac:
                 continue
 
-            prime = cumac * valo / 1000
-            line.write({
+            # ── Persistance ───────────────────────────────────────────────────
+            vals = {
                 'cumac_cee': cumac,
                 'valo_cee': valo,
-                'prime_cee': round(prime, 2),
-            })
+                'prime_cee': round(cumac * valo / 1000, 2),
+                'zone_climatique_cee': zone or False,
+                'surface_m2_cee': surface,
+            }
+            for key, line_field in self._EXTRACT_TO_LINE.items():
+                val = params.get(key)
+                if val and not getattr(line, line_field, None):
+                    vals[line_field] = val
+
+            line.write(vals)
             line._calculer_prime_mpr()
