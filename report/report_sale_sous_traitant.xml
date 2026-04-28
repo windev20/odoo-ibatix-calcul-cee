@@ -47,6 +47,9 @@
                                             <t t-if="q.nom_certificat">
                                                 <span style="color: #555;"> - <t t-esc="q.nom_certificat"/></span>
                                             </t>
+                                            <t t-if="q.organisme">
+                                                <span style="color: #555;"> - <t t-esc="q.organisme"/></span>
+                                            </t>
                                             <t t-if="q.start_date or q.end_date">
                                                 <span style="color: #888;">
                                                     <t t-if="q.start_date"> — du <t t-esc="q.start_date" t-options="{'widget': 'date'}"/></t>
