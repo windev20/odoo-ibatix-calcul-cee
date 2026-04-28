@@ -365,13 +365,39 @@ class SaleOrder(models.Model):
                     lambda l: l.display_type == 'line_cee' and l.operation_cee_id
                 ):
                     order._auto_enregistrer_primes_manquantes()
+                    order._ensure_operation_sections()
         return result
 
     def action_confirm(self):
         """À la confirmation, recalcule et enregistre les primes CEE/MPR manquantes."""
         for order in self:
             order._auto_enregistrer_primes_manquantes()
+            order._ensure_operation_sections()
         return super().action_confirm()
+
+    _SECTION_OPERATION = "Mise en place d'une opération"
+
+    def _ensure_operation_sections(self):
+        for order in self:
+            lines = order.order_line.sorted(lambda l: (l.sequence, l.id))
+            lines_list = list(lines)
+            to_create = []
+            for idx, line in enumerate(lines_list):
+                if line.display_type != 'line_cee' or not line.operation_cee_id:
+                    continue
+                prev = lines_list[idx - 1] if idx > 0 else None
+                if (prev
+                        and prev.display_type == 'line_section'
+                        and prev.name == self._SECTION_OPERATION):
+                    continue
+                to_create.append({
+                    'order_id': order.id,
+                    'display_type': 'line_section',
+                    'name': self._SECTION_OPERATION,
+                    'sequence': line.sequence - 1,
+                })
+            if to_create:
+                self.env['sale.order.line'].sudo().create(to_create)
 
     # Correspondance champ extrait du produit → champ stocké sur sale.order.line
     _EXTRACT_TO_LINE = {
