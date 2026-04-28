@@ -357,6 +357,18 @@ class SaleOrder(models.Model):
             'context': {'recalcul_mode': True},
         }
 
+    def write(self, vals):
+        result = super().write(vals)
+        if not self.env.context.get('_cee_auto_calc'):
+            for order in self.with_context(_cee_auto_calc=True):
+                if order.order_line.filtered(
+                    lambda l: l.display_type == 'line_cee'
+                    and l.operation_cee_id
+                    and not l.prime_cee
+                ):
+                    order._auto_enregistrer_primes_manquantes()
+        return result
+
     def action_confirm(self):
         """À la confirmation, recalcule et enregistre les primes CEE/MPR manquantes."""
         for order in self:
