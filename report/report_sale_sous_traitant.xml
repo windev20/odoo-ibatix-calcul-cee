@@ -41,21 +41,18 @@
                                 <div style="margin-top: 5px; font-size: 8pt;">
                                     <span style="color: #2c6fad; font-weight: bold;">Qualifications RGE en cours :</span>
                                     <t t-foreach="st_qualifs" t-as="q">
-                                        <div style="margin: 2px 0 0 8px; color: #333;">
+                                        <div style="margin: 2px 0 0 8px; color: #333; font-size: 8pt;">
                                             <span style="color: #2c6fad;">&#x25CF;</span>
-                                            <t t-esc="' ' + q.name"/>
-                                            <t t-if="q.numero_rge">
-                                                <span style="color: #555; font-size: 7.5pt;"> — N° <t t-esc="q.numero_rge"/></span>
-                                            </t>
+                                            <span style="font-weight: bold;"> <t t-esc="q.numero_rge or '—'"/></span>
                                             <t t-if="q.start_date or q.end_date">
-                                                <span style="color: #888; font-size: 7.5pt;">
+                                                <span style="color: #888;">
                                                     <t t-if="q.start_date"> — du <t t-esc="q.start_date" t-options="{'widget': 'date'}"/></t>
                                                     <t t-if="q.end_date"> au <t t-esc="q.end_date" t-options="{'widget': 'date'}"/></t>
                                                 </span>
                                             </t>
                                             <t t-if="q.public_url">
-                                                <span style="font-size: 7.5pt;"> — </span>
-                                                <a t-att-href="q.public_url" style="color: #2c6fad; font-size: 7.5pt;">Voir le certificat</a>
+                                                <span style="color: #888;"> — </span>
+                                                <a t-att-href="q.public_url" style="color: #2c6fad;">Voir le certificat</a>
                                             </t>
                                         </div>
                                     </t>
