@@ -491,6 +491,26 @@ class WizardCee(models.TransientModel):
                     f"Forfait {forfait:.0f} EUR (taux {taux_pct} %{plafond_txt})."
                 )
 
+    @api.onchange('sous_traitant_id')
+    def _onchange_sous_traitant_id(self):
+        if not self.sous_traitant_id:
+            return
+        from datetime import date
+        today = date.today()
+        qualifs_valides = self.sous_traitant_id.qualification_ids.filtered(
+            lambda q: not q.end_date or q.end_date >= today
+        )
+        if not qualifs_valides:
+            return {'warning': {
+                'title': '⚠️ Attention — Sous-traitant sans RGE valide',
+                'message': (
+                    f"{self.sous_traitant_id.name} n'a aucune qualification RGE en cours de validité "
+                    f"à la date d'aujourd'hui.\n\n"
+                    "Les travaux sous-traités à cette entreprise ne pourront pas être valorisés "
+                    "dans le cadre du dispositif CEE."
+                ),
+            }}
+
     @api.onchange('surface_m2', 'surface_chauffee', 'resistance_thermique',
                   'puissance_kw', 'cop', 'scop', 'etas', 'nb_logements',
                   'zone_climatique', 'type_logement', 'profil_soutirage',
