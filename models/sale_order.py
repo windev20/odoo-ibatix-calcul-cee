@@ -356,3 +356,77 @@ class SaleOrder(models.Model):
             'target': 'new',
             'context': {'recalcul_mode': True},
         }
+
+    def action_confirm(self):
+        """À la confirmation, recalcule et enregistre les primes CEE/MPR manquantes."""
+        for order in self:
+            order._auto_enregistrer_primes_manquantes()
+        return super().action_confirm()
+
+    def _auto_enregistrer_primes_manquantes(self):
+        """Recalcule la prime CEE pour toute ligne opération dont prime_cee == 0
+        mais dont la formule et les données techniques sont disponibles."""
+        from .wizard_cee import _evaluer_cumac
+
+        delegataire = self.delegataire_cee_id
+        contrat = self.contrat_cee_id
+        categorie = self.partner_id.categorie_precarite
+
+        for line in self.order_line.filtered(
+            lambda l: l.display_type == 'line_cee' and l.operation_cee_id and not l.prime_cee
+        ):
+            op = line.operation_cee_id
+            formule = op.formule_cumac_python
+            if not formule:
+                continue
+
+            # Valorisation : priorité ligne > contrat
+            valo = line.valo_cee
+            if not valo and contrat:
+                valo = (
+                    contrat.valo_precaire_client
+                    if categorie in ('precaire', 'modeste')
+                    else contrat.valo_classique_client
+                )
+            if not valo:
+                continue
+
+            cumac = _evaluer_cumac(
+                formule,
+                surface_m2=line.surface_m2_cee,
+                surface_chauffee=line.surface_chauffee_cee,
+                resistance_thermique=line.resistance_thermique_cee,
+                puissance_kw=line.puissance_kw_cee,
+                cop=line.cop_cee,
+                scop=line.scop_cee,
+                etas=line.etas_cee,
+                nb_logements=line.nb_logements_cee,
+                type_logement=line.type_logement_cee or '',
+                zone_climatique=line.zone_climatique_cee or '',
+                profil_soutirage=line.profil_soutirage_cee or '',
+                efficacite_energetique=line.efficacite_energetique_cee,
+                classe_regulation_iso52120=line.classe_regulation_iso52120_cee or '',
+                secteur_activite=line.secteur_activite_cee or '',
+                delta_t=line.delta_t_cee,
+                type_condensation=line.type_condensation_cee or '',
+                mode_fonctionnement=line.mode_fonctionnement_cee or '',
+                type_serre=line.type_serre_cee or '',
+                thermicite=line.thermicite_cee or '',
+                surface_capteurs=line.surface_capteurs_cee,
+                nb_equipements=line.nb_equipements_cee,
+                epaisseur_isolant=line.epaisseur_isolant_cee,
+                volume_ballon=line.volume_ballon_cee,
+                rendement_saisonnier=line.rendement_saisonnier_cee,
+                ug=line.ug_cee,
+            )
+
+            if not cumac:
+                continue
+
+            prime = cumac * valo / 1000
+            line.write({
+                'cumac_cee': cumac,
+                'valo_cee': valo,
+                'prime_cee': round(prime, 2),
+            })
+            line._calculer_prime_mpr()
