@@ -375,6 +375,19 @@ class WizardCee(models.TransientModel):
     ], string='Type de condensation')
     mode_fonctionnement = fields.Char(string='Mode de fonctionnement')
 
+    # ── Sous-traitance ───────────────────────────────────────────────────────
+    sous_traitant_id = fields.Many2one('ibatix.installateur', string='Sous-traitant')
+    sous_traitant_street = fields.Char(related='sous_traitant_id.street', string='Adresse', readonly=True)
+    sous_traitant_zip = fields.Char(related='sous_traitant_id.zip', string='Code postal', readonly=True)
+    sous_traitant_city = fields.Char(related='sous_traitant_id.city', string='Ville', readonly=True)
+    sous_traitant_phone = fields.Char(related='sous_traitant_id.phone', string='Téléphone', readonly=True)
+    sous_traitant_email = fields.Char(related='sous_traitant_id.email', string='Email', readonly=True)
+    sous_traitant_qualification_ids = fields.One2many(
+        related='sous_traitant_id.qualification_ids',
+        string='Qualifications RGE',
+        readonly=True,
+    )
+
     # ── Calcul ───────────────────────────────────────────────────────────────
     cumac_cee = fields.Float(string='Cumac retenu (MWhc)', digits=(10, 3))
     valo_cee = fields.Float(string='Valorisation (€/MWhc)', digits=(10, 4))
@@ -647,6 +660,7 @@ class WizardCee(models.TransientModel):
             'delta_t_cee': self.delta_t,
             'type_condensation_cee': self.type_condensation or False,
             'mode_fonctionnement_cee': self.mode_fonctionnement,
+            'sous_traitant_cee_id': self.sous_traitant_id.id or False,
         })
         self.sale_line_id._calculer_prime_mpr()
         return {'type': 'ir.actions.act_window_close'}

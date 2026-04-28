@@ -157,7 +157,33 @@
                         </group>
                     </page>
 
-                    <!-- Onglet 3 : Calcul -->
+                    <!-- Onglet 3 : Sous-traitance -->
+                    <page string="Sous-traitance" name="sous_traitance">
+                        <group string="Sous-traitant" col="2">
+                            <field name="sous_traitant_id"/>
+                        </group>
+                        <group string="Coordonnées" col="2" invisible="not sous_traitant_id">
+                            <field name="sous_traitant_street" readonly="1"/>
+                            <field name="sous_traitant_zip" readonly="1"/>
+                            <field name="sous_traitant_city" readonly="1"/>
+                            <field name="sous_traitant_phone" readonly="1"/>
+                            <field name="sous_traitant_email" readonly="1"/>
+                        </group>
+                        <group string="Qualifications RGE" invisible="not sous_traitant_id">
+                            <field name="sous_traitant_qualification_ids" nolabel="1" readonly="1">
+                                <list>
+                                    <field name="name" string="Qualification"/>
+                                    <field name="start_date" string="Début"/>
+                                    <field name="end_date" string="Fin"/>
+                                    <field name="qualification_file" widget="binary"
+                                           filename="qualification_filename" string="Certificat"/>
+                                    <field name="qualification_filename" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </group>
+                    </page>
+
+                    <!-- Onglet 4 : Calcul -->
                     <page string="Calcul de la prime" name="calcul">
                         <group string="Valorisation" col="2">
                             <field name="cumac_cee"/>

@@ -584,6 +584,7 @@ class SaleOrderLine(models.Model):
             'mode_fonctionnement': self.mode_fonctionnement_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,
+            'sous_traitant_id': self.sous_traitant_cee_id.id or False,
         }
 
         # ── Auto-extraction depuis le produit suivant ────────────────────────
@@ -717,6 +718,13 @@ class SaleOrderLine(models.Model):
         ondelete={'line_cee': 'cascade'},
     )
 
+
+    # ── Sous-traitance ───────────────────────────────────────────────────────
+    sous_traitant_cee_id = fields.Many2one(
+        'ibatix.installateur',
+        string='Sous-traitant',
+        ondelete='set null',
+    )
 
     # -- Champs MaPrimeRenov' ------------------------------------------------
     prime_mpr = fields.Float(string='Prime MPR (EUR)', digits=(10, 2), default=0.0)
