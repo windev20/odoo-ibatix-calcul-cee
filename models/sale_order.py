@@ -501,5 +501,9 @@ class SaleOrder(models.Model):
                 if val and not getattr(line, line_field, None):
                     vals[line_field] = val
 
+            # Appliquer le sous-traitant par défaut de l'opération si pas encore défini
+            if not line.sous_traitant_cee_id and op.sous_traitant_defaut_id:
+                vals['sous_traitant_cee_id'] = op.sous_traitant_defaut_id.id
+
             line.write(vals)
             line._calculer_prime_mpr()
