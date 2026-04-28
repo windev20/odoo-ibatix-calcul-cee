@@ -322,6 +322,9 @@ class SaleOrder(models.Model):
                         'qualifications': st.qualification_ids.filtered(
                             lambda q: not q.end_date or q.end_date >= today
                         ),
+                        'assurances': st.assurance_ids.filtered(
+                            lambda a: not a.end_date or a.end_date >= today
+                        ),
                     }
                 current_cee = line
                 last_non_cee = None
@@ -334,6 +337,9 @@ class SaleOrder(models.Model):
                 'installateur': st,
                 'qualifications': st.qualification_ids.filtered(
                     lambda q: not q.end_date or q.end_date >= today
+                ),
+                'assurances': st.assurance_ids.filtered(
+                    lambda a: not a.end_date or a.end_date >= today
                 ),
             }
         return result
