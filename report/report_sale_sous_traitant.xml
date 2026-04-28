@@ -17,7 +17,7 @@
                 <t t-set="st_qualifs" t-value="st_block['qualifications']"/>
                 <tr name="tr_sous_traitant" style="background: transparent;">
                     <td colspan="99" style="padding: 4px 0 10px 0; border: none;">
-                        <div style="padding: 8px 12px; background-color: #f4f8fd; border-left: 3px solid #2c6fad; margin-top: 4px;">
+                        <div style="padding: 8px 12px; background-color: #f2f2f2; border-left: 3px solid #2c6fad; margin-top: 4px;">
                             <div style="font-size: 7pt; font-weight: bold; color: #2c6fad; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">
                                 Sous-traitant pour cette opération
                             </div>
@@ -44,6 +44,9 @@
                                         <div style="margin: 2px 0 0 8px; color: #333;">
                                             <span style="color: #2c6fad;">&#x25CF;</span>
                                             <t t-esc="' ' + q.name"/>
+                                            <t t-if="q.numero_rge">
+                                                <span style="color: #555; font-size: 7.5pt;"> — N° <t t-esc="q.numero_rge"/></span>
+                                            </t>
                                             <t t-if="q.start_date or q.end_date">
                                                 <span style="color: #888; font-size: 7.5pt;">
                                                     <t t-if="q.start_date"> — du <t t-esc="q.start_date" t-options="{'widget': 'date'}"/></t>
