@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import date
 
 from odoo import api, fields, models
 
@@ -300,6 +301,42 @@ class SaleOrder(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
+
+    def _get_report_subcontractor_map(self):
+        """Retourne {line_id: {'installateur': rec, 'qualifications': recs}}
+        pour les lignes après lesquelles un bloc sous-traitant doit apparaître dans le PDF."""
+        today = date.today()
+        result = {}
+        sorted_lines = self.order_line.sorted(lambda l: (l.sequence, l.id))
+        lines_list = list(sorted_lines)
+
+        current_cee = None
+        last_non_cee = None
+
+        for line in lines_list:
+            if line.display_type == 'line_cee':
+                if current_cee and current_cee.sous_traitant_cee_id and last_non_cee:
+                    st = current_cee.sous_traitant_cee_id
+                    result[last_non_cee.id] = {
+                        'installateur': st,
+                        'qualifications': st.qualification_ids.filtered(
+                            lambda q: not q.end_date or q.end_date >= today
+                        ),
+                    }
+                current_cee = line
+                last_non_cee = None
+            else:
+                last_non_cee = line
+
+        if current_cee and current_cee.sous_traitant_cee_id and last_non_cee:
+            st = current_cee.sous_traitant_cee_id
+            result[last_non_cee.id] = {
+                'installateur': st,
+                'qualifications': st.qualification_ids.filtered(
+                    lambda q: not q.end_date or q.end_date >= today
+                ),
+            }
+        return result
 
     def action_recalculer_prime_cee(self):
         self.ensure_one()

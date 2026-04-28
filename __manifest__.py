@@ -19,6 +19,7 @@
     },
     'data': [
         'security/ir.model.access.csv',
+        'report/report_sale_sous_traitant.xml',
         'views/operation_cee_views.xml',
         'views/sale_order_views.xml',
         'views/wizard_cee_views.xml',
