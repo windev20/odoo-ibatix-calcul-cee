@@ -44,6 +44,9 @@
                                         <div style="margin: 2px 0 0 8px; color: #333; font-size: 8pt;">
                                             <span style="color: #2c6fad;">&#x25CF;</span>
                                             <span style="font-weight: bold;"> <t t-esc="q.numero_rge or '—'"/></span>
+                                            <t t-if="q.nom_certificat">
+                                                <span style="color: #555;"> - <t t-esc="q.nom_certificat"/></span>
+                                            </t>
                                             <t t-if="q.start_date or q.end_date">
                                                 <span style="color: #888;">
                                                     <t t-if="q.start_date"> — du <t t-esc="q.start_date" t-options="{'widget': 'date'}"/></t>
