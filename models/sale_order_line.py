@@ -584,7 +584,11 @@ class SaleOrderLine(models.Model):
             'mode_fonctionnement': self.mode_fonctionnement_cee or '',
             'guide_technique': guide_html,
             'fiche_analysee': fiche_deja_analysee,
-            'sous_traitant_id': self.sous_traitant_cee_id.id or False,
+            'sous_traitant_id': (
+                self.sous_traitant_cee_id.id
+                or (op.sous_traitant_defaut_id.id if op else False)
+                or False
+            ),
         }
 
         # ── Auto-extraction depuis le produit suivant ────────────────────────

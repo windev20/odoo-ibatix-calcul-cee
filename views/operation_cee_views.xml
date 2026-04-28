@@ -47,6 +47,11 @@
             <!-- Onglets MPR + Guide + Formule en un seul notebook -->
             <xpath expr="//sheet/group" position="after">
                 <notebook>
+                    <page string="Sous-traitance" name="sous_traitance_config">
+                        <group>
+                            <field name="sous_traitant_defaut_id"/>
+                        </group>
+                    </page>
                     <page string="MaPrimeRenov'" name="mpr_config">
                         <group>
                             <field name="eligible_mpr"/>

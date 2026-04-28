@@ -119,6 +119,13 @@ class IbatixOperationCee(models.Model):
             'formule_description': False,
         })
 
+    # ── Sous-traitance ───────────────────────────────────────────────────────
+    sous_traitant_defaut_id = fields.Many2one(
+        'ibatix.installateur',
+        string='Sous-traitant par défaut',
+        ondelete='set null',
+    )
+
     # ── Champs MaPrimeRénov' ─────────────────────────────────────────────────
     eligible_mpr = fields.Boolean(string='Éligible MPR', default=False)
     type_calcul_mpr = fields.Selection([
