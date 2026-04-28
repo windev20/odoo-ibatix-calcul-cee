@@ -64,6 +64,24 @@
                                     </t>
                                 </div>
                             </t>
+                            <t t-set="st_assurances" t-value="st.assurance_ids.filtered(lambda a: not a.end_date or a.end_date &gt;= context_today())"/>
+                            <t t-if="st_assurances">
+                                <div style="margin-top: 5px; font-size: 8pt;">
+                                    <span style="color: #2c6fad; font-weight: bold;">Assurances :</span>
+                                    <t t-foreach="st_assurances" t-as="a">
+                                        <div style="margin: 2px 0 0 8px; color: #333; font-size: 8pt;">
+                                            <span style="color: #2c6fad;">&#x25CF;</span>
+                                            <span style="font-weight: bold;"> <t t-esc="a.name or '—'"/></span>
+                                            <t t-if="a.start_date or a.end_date">
+                                                <span style="color: #888;">
+                                                    <t t-if="a.start_date"> — du <t t-esc="a.start_date" t-options="{'widget': 'date'}"/></t>
+                                                    <t t-if="a.end_date"> au <t t-esc="a.end_date" t-options="{'widget': 'date'}"/></t>
+                                                </span>
+                                            </t>
+                                        </div>
+                                    </t>
+                                </div>
+                            </t>
                         </div>
                     </td>
                 </tr>
